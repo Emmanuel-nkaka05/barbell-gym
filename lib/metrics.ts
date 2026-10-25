@@ -107,3 +107,49 @@ export function dateLabel(ts: number) {
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${DAY_NAMES[(d.getDay() + 6) % 7]} ${d.getDate()}/${d.getMonth() + 1}  ${hh}:${mm}`;
 }
+
+function weekRanges(weeks: number, today = new Date()) {
+  const thisMonday = startOfWeek(today);
+  return Array.from({ length: weeks }, (_, k) => {
+    const i = weeks - 1 - k; // 0 = this week
+    const start = new Date(thisMonday);
+    start.setDate(thisMonday.getDate() - 7 * i);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return {
+      start: start.getTime(),
+      end: end.getTime(),
+      label: `${start.getDate()}/${start.getMonth() + 1}`,
+      isCurrent: i === 0,
+    };
+  });
+}
+
+/** Totals for each of the last N weeks (weeks start on Monday), oldest first. */
+export function weeklyTotals(sessions: Session[], bodyweight: number, weeks = 8) {
+  return weekRanges(weeks).map((r) => {
+    const inWeek = sessions.filter((s) => s.endedAt >= r.start && s.endedAt < r.end);
+    return {
+      label: r.label,
+      isCurrent: r.isCurrent,
+      volume: inWeek.reduce((t, s) => t + sessionVolume(s), 0),
+      sessions: inWeek.length,
+      kcal: inWeek.reduce((t, s) => t + kcalFor(s.durationSec, bodyweight), 0),
+    };
+  });
+}
+
+/** Best estimated one-rep max for one exercise in each of the last N weeks (null if not trained). */
+export function weeklyBest(sessions: Session[], exerciseId: string, weeks = 8) {
+  return weekRanges(weeks).map((r) => {
+    let best = 0;
+    for (const s of sessions) {
+      if (s.endedAt < r.start || s.endedAt >= r.end) continue;
+      for (const e of s.exercises) {
+        if (e.exerciseId !== exerciseId) continue;
+        for (const x of e.sets) best = Math.max(best, e1rm(x.weight, x.reps));
+      }
+    }
+    return { label: r.label, isCurrent: r.isCurrent, e1rm: best > 0 ? best : null };
+  });
+}

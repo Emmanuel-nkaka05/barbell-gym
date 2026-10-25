@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mono, radius, useColors } from '../theme';
+import { bump, mono, radius, useColors } from '../theme';
 import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
@@ -85,7 +85,7 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: c.text, fontSize: 15, fontWeight: '800' }}>{ex.name}</Text>
-                    <Text style={{ color: c.muted, fontFamily: mono, fontSize: 10, marginTop: 3 }} numberOfLines={1}>
+                    <Text style={{ color: c.muted, fontFamily: mono, fontSize: bump(10), marginTop: 3 }} numberOfLines={1}>
                       {ex.muscles.slice(0, 3).join(', ')}
                     </Text>
                   </View>

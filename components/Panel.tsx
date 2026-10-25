@@ -10,7 +10,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mono, radius, useColors } from '../theme';
+import { fonts, radius, useColors } from '../theme';
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -42,7 +42,13 @@ export function Label({ style, ...rest }: TextProps) {
     <Text
       {...rest}
       style={[
-        { fontFamily: mono, fontSize: 10, letterSpacing: 1.2, color: c.accent, textTransform: 'uppercase' },
+        {
+          fontFamily: fonts.bodySemi,
+          fontSize: 10,
+          letterSpacing: 1.2,
+          color: c.accent,
+          textTransform: 'uppercase',
+        },
         style,
       ]}
     />
@@ -70,8 +76,9 @@ export function Button({ title, onPress, icon, variant = 'solid', disabled, styl
           backgroundColor: solid ? c.accent : 'transparent',
           borderColor: c.edge,
           borderWidth: solid ? 0 : 1,
-          borderRadius: radius.card,
-          paddingVertical: 15,
+          borderRadius: radius.pill,
+          paddingVertical: 14,
+          paddingHorizontal: 20,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -82,7 +89,7 @@ export function Button({ title, onPress, icon, variant = 'solid', disabled, styl
       ]}
     >
       {icon && <Ionicons name={icon} size={18} color={solid ? c.onAccent : c.accent} />}
-      <Text style={{ color: solid ? c.onAccent : c.accent, fontSize: 15, fontWeight: '800' }}>{title}</Text>
+      <Text style={{ color: solid ? c.onAccent : c.accent, fontSize: 19, fontFamily: fonts.serif }}>{title}</Text>
     </Pressable>
   );
 }
@@ -132,7 +139,17 @@ export function Header({
       }}
     >
       {onBack && <RoundButton icon="chevron-back" onPress={onBack} />}
-      <Text style={{ flex: 1, color: c.text, fontSize: 20, fontWeight: '800' }} numberOfLines={1}>
+      <Text
+        style={{
+          flex: 1,
+          color: c.text,
+          fontSize: 26,
+          fontFamily: fonts.display,
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+        numberOfLines={1}
+      >
         {title}
       </Text>
       {right}

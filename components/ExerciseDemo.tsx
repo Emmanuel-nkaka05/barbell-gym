@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Line, Rect } from 'react-native-svg';
-import { mono, radius, useColors } from '../theme';
-import { POSES, Pt } from '../data/poses';
+import { bump, mono, radius, useColors } from '../theme';
+import { POSES, Pose, Pt } from '../data/poses';
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const mix = (a: Pt, b: Pt, t: number): Pt => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)];
@@ -29,7 +29,12 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
 
   if (!demo) return null;
 
-  const at = (k: keyof typeof demo.a) => mix(demo.a[k], demo.b[k], p);
+  const at = (k: Exclude<keyof Pose, 'knee2' | 'ankle2' | 'toe2'>) => mix(demo.a[k], demo.b[k], p);
+  const at2 = (k: 'knee2' | 'ankle2' | 'toe2'): Pt | null => {
+    const a = demo.a[k];
+    const b = demo.b[k];
+    return a && b ? mix(a, b, p) : null;
+  };
   const head = at('head');
   const shoulder = at('shoulder');
   const hip = at('hip');
@@ -39,8 +44,11 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
   const elbow = at('elbow');
   const wrist = at('wrist');
   const bar = at('bar');
+  const knee2 = at2('knee2');
+  const ankle2 = at2('ankle2');
+  const toe2 = at2('toe2');
 
-  const limb = (from: Pt, to: Pt, w = 7) => (
+  const limb = (from: Pt, to: Pt, w = 7, op = 1) => (
     <Line
       x1={from[0]}
       y1={from[1]}
@@ -48,6 +56,7 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
       y2={to[1]}
       stroke={c.text}
       strokeWidth={w}
+      strokeOpacity={op}
       strokeLinecap="round"
     />
   );
@@ -73,6 +82,23 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
           </>
         )}
 
+        {demo.hipBench && (
+          <>
+            <Rect x={22} y={132} width={52} height={8} rx={3} fill={c.panel} stroke={c.edge} strokeWidth={1.5} />
+            <Line x1={30} y1={140} x2={30} y2={178} stroke={c.edge} strokeWidth={4} />
+            <Line x1={66} y1={140} x2={66} y2={178} stroke={c.edge} strokeWidth={4} />
+          </>
+        )}
+
+        {/* second leg (lunges), drawn behind */}
+        {knee2 && ankle2 && toe2 && (
+          <>
+            {limb(ankle2, toe2, 6, 0.55)}
+            {limb(ankle2, knee2, 7, 0.55)}
+            {limb(knee2, hip, 7, 0.55)}
+          </>
+        )}
+
         {/* legs and torso */}
         {limb(ankle, toe, 6)}
         {limb(ankle, knee)}
@@ -92,7 +118,7 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
 
       <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 4 }}>
         <Text style={{ color: c.text, fontSize: 13, lineHeight: 19 }}>{p < 0.5 ? demo.captionA : demo.captionB}</Text>
-        <Text style={{ color: c.muted, fontFamily: mono, fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <Text style={{ color: c.muted, fontFamily: mono, fontSize: bump(9), textTransform: 'uppercase', letterSpacing: 1 }}>
           {playing ? 'Tap to pause' : 'Paused, tap to play'}
         </Text>
       </View>

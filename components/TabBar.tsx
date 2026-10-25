@@ -14,7 +14,7 @@ const LEFT: { key: TabKey; icon: IconName; label: string }[] = [
   { key: 'workouts', icon: 'barbell', label: 'Protocols' },
 ];
 const RIGHT: { key: TabKey; icon: IconName; label: string }[] = [
-  { key: 'history', icon: 'stats-chart', label: 'Log' },
+  { key: 'history', icon: 'stats-chart', label: 'Progress' },
   { key: 'profile', icon: 'person', label: 'Profile' },
 ];
 

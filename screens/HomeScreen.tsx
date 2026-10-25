@@ -1,13 +1,15 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, mono, useColors } from '../theme';
+import { Colors, fonts, mono, useColors } from '../theme';
 import { Label, Panel, useTopPad } from '../components/Panel';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { estMinutes, totalSets } from '../data/programs';
 import { computeMetrics, fmt, nextProgram, weekDays } from '../lib/metrics';
 import { kgToUnit } from '../lib/units';
+import { Avatar } from '../components/Avatar';
+import BodyGuide from '../components/BodyGuide';
 import type { Nav } from '../nav';
 
 export default function HomeScreen({ nav }: { nav: Nav }) {
@@ -29,11 +31,9 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={s.header}>
-          <View style={s.avatar}>
-            <Ionicons name="person" size={22} color={c.accent} />
-          </View>
+          <Avatar size={46} />
           <View style={{ marginLeft: 12 }}>
-            <Label style={{ color: c.muted }}>ID {profile.personalId}</Label>
+            <Label style={{ color: c.muted }}>ID {profile.personalId || 'not registered'}</Label>
             <Text style={s.agent}>Agent {profile.name}</Text>
           </View>
         </View>
@@ -117,6 +117,8 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
           </Panel>
         </View>
 
+        <BodyGuide />
+
         <View style={s.sectionRow}>
           <Text style={s.section}>Next protocol</Text>
           <Pressable onPress={() => nav.tab({ name: 'workouts' })}>
@@ -159,6 +161,20 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
             <Ionicons name="chevron-forward" size={20} color={c.muted} />
           </Panel>
         </Pressable>
+
+        <Pressable onPress={() => nav.go({ name: 'leaderboard' })}>
+          <Panel style={s.protocol}>
+            <View style={s.thumb}>
+              <Ionicons name="trophy" size={30} color={c.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Label>Leaderboard</Label>
+              <Text style={s.protoTitle}>See what others lift</Text>
+              <Text style={s.protoMeta}>Bench, squat, deadlift, press</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={c.muted} />
+          </Panel>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -178,8 +194,8 @@ const makeStyles = (c: Colors) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    agent: { color: c.text, fontSize: 16, fontWeight: '800', marginTop: 2 },
-    welcome: { color: c.text, fontFamily: mono, fontSize: 18, letterSpacing: 0.5 },
+    agent: { color: c.text, fontSize: 22, fontFamily: fonts.display, textTransform: 'uppercase', marginTop: 2 },
+    welcome: { color: c.text, fontFamily: fonts.serif, fontSize: 28 },
     weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
     day: { flex: 1, marginHorizontal: 2, alignItems: 'center', paddingVertical: 8, borderRadius: 10 },
     dayActive: { backgroundColor: c.accent },
@@ -189,12 +205,12 @@ const makeStyles = (c: Colors) =>
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     stat: { width: '48%', flexGrow: 1, minHeight: 112, justifyContent: 'space-between', padding: 14 },
     statHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    statValue: { color: c.text, fontSize: 24, fontWeight: '800', fontFamily: mono },
+    statValue: { color: c.text, fontSize: 30, fontFamily: fonts.display },
     unit: { fontSize: 11, color: c.muted, fontWeight: '400' },
     note: { color: c.muted, fontFamily: mono, fontSize: 10 },
     bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 36 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    section: { color: c.text, fontSize: 16, fontWeight: '800' },
+    section: { color: c.text, fontSize: 22, fontFamily: fonts.display, textTransform: 'uppercase' },
     protocol: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     thumb: {
       width: 64,
@@ -206,7 +222,7 @@ const makeStyles = (c: Colors) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    protoTitle: { color: c.text, fontSize: 15, fontWeight: '800', marginTop: 4 },
+    protoTitle: { color: c.text, fontSize: 19, fontFamily: fonts.display, textTransform: 'uppercase', marginTop: 4 },
     protoMeta: { color: c.muted, fontFamily: mono, fontSize: 10, marginTop: 4 },
     play: {
       width: 40,

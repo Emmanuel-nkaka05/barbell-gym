@@ -1,7 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { ACCENTS, ColorsContext, makeColors } from './theme';
+import { useFonts } from 'expo-font';
+import { Anton_400Regular } from '@expo-google-fonts/anton/400Regular';
+import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif/400Regular_Italic';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { ColorsContext, makeColors } from './theme';
 import { AppProvider, useStore } from './store';
 import type { Nav, Route } from './nav';
 import TabBar from './components/TabBar';
@@ -15,24 +22,39 @@ import HistoryScreen from './screens/HistoryScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AccountScreen from './screens/AccountScreen';
 import PlanScreen from './screens/PlanScreen';
+import AuthScreen from './screens/AuthScreen';
+import LeaderboardScreen from './screens/LeaderboardScreen';
+import AdminScreen from './screens/AdminScreen';
+import { CloudProvider } from './lib/CloudContext';
 
 export default function App() {
   return (
     <AppProvider>
-      <Root />
+      <CloudProvider>
+        <Root />
+      </CloudProvider>
     </AppProvider>
   );
 }
 
 function Root() {
   const { loaded, accent } = useStore();
-  const colors = useMemo(() => makeColors(ACCENTS[accent].color), [accent]);
+  const colors = useMemo(() => makeColors(accent), [accent]);
+  const [fontsLoaded, fontError] = useFonts({
+    Anton_400Regular,
+    InstrumentSerif_400Regular_Italic,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+  const ready = loaded && (fontsLoaded || !!fontError);
 
   return (
     <ColorsContext.Provider value={colors}>
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <StatusBar style="light" />
-        {loaded ? <Navigator /> : null}
+        <StatusBar style={colors.dark ? 'light' : 'dark'} />
+        {ready ? <Navigator /> : null}
       </View>
     </ColorsContext.Provider>
   );
@@ -108,6 +130,15 @@ function Navigator() {
       break;
     case 'plan':
       screen = <PlanScreen nav={nav} />;
+      break;
+    case 'auth':
+      screen = <AuthScreen nav={nav} />;
+      break;
+    case 'leaderboard':
+      screen = <LeaderboardScreen nav={nav} />;
+      break;
+    case 'admin':
+      screen = <AdminScreen nav={nav} />;
       break;
   }
 

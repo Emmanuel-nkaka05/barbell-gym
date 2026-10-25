@@ -8,7 +8,10 @@ export type Route =
   | { name: 'session'; programId: string }
   | { name: 'builder' }
   | { name: 'account'; setup?: boolean }
-  | { name: 'plan' };
+  | { name: 'plan' }
+  | { name: 'auth' }
+  | { name: 'leaderboard' }
+  | { name: 'admin' };
 
 export type Nav = {
   /** push a screen on top of the current one */

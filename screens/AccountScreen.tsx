@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { mono, radius, useColors } from '../theme';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { fonts, mono, radius, useColors } from '../theme';
+import { Avatar, AVATARS } from '../components/Avatar';
 import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
-import { makeId, useStore } from '../store';
+import { useStore } from '../store';
+import { useCloud } from '../lib/CloudContext';
 import { fmtNum, fmtWeight, kgToUnit, unitToKg } from '../lib/units';
 import type { Unit } from '../lib/units';
 import type { Nav } from '../nav';
@@ -11,10 +15,10 @@ const num = (s: string) => parseFloat(s.replace(',', '.'));
 
 export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolean }) {
   const c = useColors();
-  const { profile, updateProfile } = useStore();
+  const { profile, updateProfile, photo, setPhoto } = useStore();
 
   const [name, setName] = useState(profile.name);
-  const [pid, setPid] = useState(profile.personalId);
+  const cloud = useCloud();
   const [unit, setUnit] = useState<Unit>(profile.unit);
   const [bw, setBw] = useState(fmtWeight(profile.bodyweightKg, profile.unit));
   const [ht, setHt] = useState(
@@ -52,14 +56,46 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
     }
     updateProfile({
       name: n,
-      personalId: pid.trim().toUpperCase() || profile.personalId || makeId(),
       unit,
       bodyweightKg: w,
       heightCm,
     });
+    if (cloud.user && n !== cloud.user.name) cloud.rename(n);
     if (setup) nav.tab({ name: 'home' });
     else nav.back();
   };
+
+  const pick = async (camera: boolean) => {
+    try {
+      if (camera) {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Camera permission needed', 'Allow camera access in your phone settings to take a photo.');
+          return;
+        }
+      }
+      const opts = { allowsEditing: true, aspect: [1, 1] as [number, number], quality: 0.3, base64: true };
+      const res = camera
+        ? await ImagePicker.launchCameraAsync(opts)
+        : await ImagePicker.launchImageLibraryAsync(opts);
+      const b64 = res.canceled ? null : res.assets?.[0]?.base64;
+      if (b64) setPhoto(`data:image/jpeg;base64,${b64}`);
+    } catch {
+      Alert.alert('Could not load the photo', 'Please try again.');
+    }
+  };
+
+  const chip = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: c.edge,
+    backgroundColor: c.panelRaised,
+  } as const;
 
   const field = {
     height: 48,
@@ -85,6 +121,53 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
           </Text>
         )}
 
+        <Panel style={{ alignItems: 'center', gap: 14 }}>
+          <Avatar size={92} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+            <Pressable onPress={() => pick(true)} style={chip}>
+              <Ionicons name="camera" size={16} color={c.accent} />
+              <Text style={{ color: c.text, fontSize: 13, fontWeight: '700' }}>Take photo</Text>
+            </Pressable>
+            <Pressable onPress={() => pick(false)} style={chip}>
+              <Ionicons name="images" size={16} color={c.accent} />
+              <Text style={{ color: c.text, fontSize: 13, fontWeight: '700' }}>Gallery</Text>
+            </Pressable>
+            {photo && (
+              <Pressable onPress={() => setPhoto(null)} style={chip}>
+                <Ionicons name="trash-outline" size={16} color={c.muted} />
+                <Text style={{ color: c.muted, fontSize: 13, fontWeight: '700' }}>Remove photo</Text>
+              </Pressable>
+            )}
+          </View>
+          <Label style={{ color: c.muted }}>Or choose an avatar</Label>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+            {AVATARS.map((a) => {
+              const on = !photo && profile.avatar === a;
+              return (
+                <Pressable
+                  key={a}
+                  onPress={() => {
+                    setPhoto(null);
+                    updateProfile({ avatar: a });
+                  }}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    borderWidth: 1.5,
+                    borderColor: on ? c.accent : c.edge,
+                    backgroundColor: c.panelRaised,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Ionicons name={a} size={22} color={c.accent} />
+                </Pressable>
+              );
+            })}
+          </View>
+        </Panel>
+
         <Panel style={{ gap: 10 }}>
           <Label>Name</Label>
           <TextInput
@@ -96,17 +179,19 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
             style={field}
           />
           <Label style={{ marginTop: 6 }}>Personal ID</Label>
-          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <TextInput
-              value={pid}
-              onChangeText={setPid}
-              autoCapitalize="characters"
-              placeholder="GK-0000"
-              placeholderTextColor={c.muted}
-              style={[field, { flex: 1, fontFamily: mono, letterSpacing: 1 }]}
-            />
-            <RoundButton icon="refresh" size={44} onPress={() => setPid(makeId())} />
+          <View style={[field, { justifyContent: 'center', opacity: 0.8 }]}>
+            <Text style={{ color: c.text, fontFamily: mono, fontSize: 16, letterSpacing: 1 }}>
+              {profile.personalId || 'Assigned when you create an account'}
+            </Text>
           </View>
+          <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }}>
+            Your ID is unique to you and can't be changed.
+          </Text>
+          {!profile.registered && (
+            <Pressable onPress={() => nav.go({ name: 'auth' })}>
+              <Text style={{ color: c.accent, fontFamily: fonts.serif, fontSize: 18 }}>Create an account to get your ID</Text>
+            </Pressable>
+          )}
         </Panel>
 
         <Label>Units</Label>

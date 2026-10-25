@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mono, radius, useColors } from '../theme';
+import { fonts, mono, radius, useColors } from '../theme';
 import { Label, useTopPad } from '../components/Panel';
 
 export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
@@ -66,12 +66,12 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
           <Label>Gotham Knight Protocol</Label>
         </View>
 
-        <Text style={{ color: c.text, fontSize: 40, fontWeight: '800', lineHeight: 44, letterSpacing: -0.5 }}>
+        <Text
+          style={{ color: c.text, fontSize: 54, fontFamily: fonts.display, lineHeight: 58, textTransform: 'uppercase' }}
+        >
           Train like the
         </Text>
-        <Text style={{ color: c.accent, fontSize: 40, fontWeight: '800', lineHeight: 44, letterSpacing: -0.5 }}>
-          Dark Knight.
-        </Text>
+        <Text style={{ color: c.accent, fontSize: 56, fontFamily: fonts.serif, lineHeight: 60 }}>Dark Knight.</Text>
 
         <Text style={{ color: c.muted, fontSize: 14, lineHeight: 21, maxWidth: 320 }}>
           Barbell protocols, set-by-set logging and real metrics from every lift you log.
@@ -103,7 +103,7 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ color: c.onAccent, fontSize: 16, fontWeight: '800' }}>Start protocol</Text>
+          <Text style={{ color: c.onAccent, fontSize: 22, fontFamily: fonts.serif }}>Start protocol</Text>
           <Ionicons name="arrow-forward" size={18} color={c.onAccent} />
         </Pressable>
       </View>

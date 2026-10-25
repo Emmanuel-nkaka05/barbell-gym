@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "225501997008",
+    "project_id": "barbell-gym-92896",
+    "storage_bucket": "barbell-gym-92896.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:225501997008:android:75d8d8a5731685c6b3fbd5",
+        "android_client_info": {
+          "package_name": "com.cortexsystems.barbellgym"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "225501997008-1iuse9klvte7n8tajnejpdae323r2bea.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cortexsystems.barbellgym",
+            "certificate_hash": "03a5acb99e894bb0d081331a6033908cf8a2036e"
+          }
+        },
+        {
+          "client_id": "225501997008-btpv4arcja4qfncc85ln2d9p0gm314vi.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwOUmBUx9epSV7fp3o3oHn2j-4fQG-5cw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "225501997008-btpv4arcja4qfncc85ln2d9p0gm314vi.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

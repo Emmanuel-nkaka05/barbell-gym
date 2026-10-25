@@ -18,7 +18,9 @@ export type Session = {
 
 export type Profile = {
   name: string;
-  personalId: string;
+  personalId: string; // assigned by the server when you create an account, never typed in by the user
+  registered: boolean; // true once the personal ID came from a real account
+  avatar: string; // icon name for the preset avatar
   unit: Unit;
   heightCm: number | null;
   bodyweightKg: number;
@@ -38,6 +40,8 @@ type Store = Persisted & {
   programs: Program[];
   bodyweight: number; // kg, shortcut for profile.bodyweightKg
   unit: Unit; // shortcut for profile.unit
+  photo: string | null; // profile photo as a data URI, stored separately
+  setPhoto: (uri: string | null) => void;
   setAccent: (a: AccentKey) => void;
   updateProfile: (patch: Partial<Profile>) => void;
   addSession: (s: Session) => void;
@@ -45,14 +49,16 @@ type Store = Persisted & {
   addProgram: (p: Program) => void;
   deleteProgram: (id: string) => void;
   resetAll: () => void;
-  
 };
 
 const KEY = 'barbell-gym-v1';
+const PHOTO_KEY = 'barbell-gym-photo';
 
 const DEFAULT_PROFILE: Profile = {
   name: '',
   personalId: '',
+  registered: false,
+  avatar: 'person',
   unit: 'kg',
   heightCm: null,
   bodyweightKg: 80,
@@ -67,17 +73,16 @@ const DEFAULTS: Persisted = {
   profile: DEFAULT_PROFILE,
 };
 
-export const makeId = () => `GK-${Math.floor(1000 + Math.random() * 9000)}`;
-
 const StoreContext = createContext<Store | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<Persisted>(DEFAULTS);
   const [loaded, setLoaded] = useState(false);
+  const [photo, setPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY)
-      .then((raw) => {
+    Promise.all([AsyncStorage.getItem(KEY), AsyncStorage.getItem(PHOTO_KEY)])
+      .then(([raw, photoRaw]) => {
         let next: Persisted = DEFAULTS;
         if (raw) {
           try {
@@ -87,9 +92,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             next = { ...DEFAULTS, ...parsed, profile };
           } catch {}
         }
-        if (!next.profile.personalId) {
-          next = { ...next, profile: { ...next.profile, personalId: makeId() } };
+        // IDs made on the phone in earlier versions were not unique, so only keep IDs from a real account
+        if (!next.profile.registered && next.profile.personalId) {
+          next = { ...next, profile: { ...next.profile, personalId: '' } };
         }
+        if (photoRaw) setPhoto(photoRaw);
         setData(next);
       })
       .catch(() => {})
@@ -100,12 +107,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (loaded) AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
   }, [data, loaded]);
 
+  useEffect(() => {
+    if (!loaded) return;
+    (photo ? AsyncStorage.setItem(PHOTO_KEY, photo) : AsyncStorage.removeItem(PHOTO_KEY)).catch(() => {});
+  }, [photo, loaded]);
+
   const value = useMemo<Store>(
     () => ({
       ...data,
       loaded,
       programs: [...BUILTIN_PROGRAMS, ...data.customPrograms],
       bodyweight: data.profile.bodyweightKg,
+      photo,
+      setPhoto,
       unit: data.profile.unit,
       setAccent: (accent) => setData((d) => ({ ...d, accent })),
       updateProfile: (patch) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch } })),
@@ -115,10 +129,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteProgram: (id) =>
         setData((d) => ({ ...d, customPrograms: d.customPrograms.filter((p) => p.id !== id) })),
       // Clears logged sessions and custom protocols; keeps theme and your profile
-      resetAll: () =>
-      setData(() => ({ ...DEFAULTS, profile: { ...DEFAULT_PROFILE, personalId: makeId() } })),
+      resetAll: () => setData((d) => ({ ...DEFAULTS, accent: d.accent, profile: d.profile })),
     }),
-    [data, loaded]
+    [data, loaded, photo]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

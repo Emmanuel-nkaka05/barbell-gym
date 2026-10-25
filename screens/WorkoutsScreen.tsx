@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mono, useColors } from '../theme';
+import { bump, fonts, mono, useColors } from '../theme';
 import { Button, Header, Label, Panel } from '../components/Panel';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
@@ -25,8 +25,8 @@ export default function WorkoutsScreen({ nav }: { nav: Nav }) {
                 </Label>
                 <Label style={{ color: c.muted }}>{p.level}</Label>
               </View>
-              <Text style={{ color: c.text, fontSize: 18, fontWeight: '800' }}>{p.name}</Text>
-              <Text style={{ color: c.muted, fontSize: 12, lineHeight: 18 }} numberOfLines={2}>
+              <Text style={{ color: c.text, fontSize: 24, fontFamily: fonts.display, textTransform: 'uppercase' }}>{p.name}</Text>
+              <Text style={{ color: c.muted, fontSize: bump(12), lineHeight: bump(18) }} numberOfLines={2}>
                 {p.exercises.map((e) => EXERCISE_MAP[e.exerciseId]?.name).filter(Boolean).join(', ')}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

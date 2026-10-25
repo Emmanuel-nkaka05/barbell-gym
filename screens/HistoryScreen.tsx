@@ -7,6 +7,7 @@ import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { bestLifts, clock, dateLabel, fmt, sessionSetCount, sessionVolume } from '../lib/metrics';
 import { fmtWeight, kgToUnit } from '../lib/units';
+import ProgressPanel from '../components/ProgressPanel';
 
 export default function HistoryScreen() {
   const c = useColors();
@@ -25,7 +26,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <Header title="Mission log" />
+      <Header title="Progress and log" />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130, gap: 12 }}>
         <Panel style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
           <View style={{ alignItems: 'center' }}>
@@ -41,6 +42,8 @@ export default function HistoryScreen() {
             </Text>
           </View>
         </Panel>
+
+        <ProgressPanel />
 
         {sessions.length === 0 && (
           <Panel>
