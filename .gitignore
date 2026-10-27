@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+bower_components/
 
 # Expo
 .expo/
@@ -31,7 +32,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+.env.production
+.env.development
+.env.staging
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +44,89 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# ---------------------------------------------------------------
+# 🔐 GOOGLE / FIREBASE / SERVICE ACCOUNT KEYS — KEEP PRIVATE
+# ---------------------------------------------------------------
+# Google service account & OAuth client secrets
+google-services.json
+GoogleService-Info.plist
+google-services*.json
+google-services.json.*
+service-account*.json
+*-service-account.json
+serviceAccount*.json
+firebase-adminsdk-*.json
+firebase-service-account*.json
+firebaseConfig.json
+firebase-config.json
+gcloud-credentials.json
+gcp-credentials.json
+oauth-client-secret*.json
+client_secret*.json
+credentials.json
+keys.json
+keyfile.json
+
+# Any file matching a service account pattern (flexible)
+**/*service-account*.json
+**/*serviceaccount*.json
+**/*firebase-adminsdk*.json
+**/*google-services*.json
+**/GoogleService-Info.plist
+
+# Firebase
+.idea
+**/node_modules/*
+**/.firebaserc
+.firebase/
+.runtimeconfig.json
+.firebaserc
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# ---------------------------------------------------------------
+# 🔐 OTHER SECRETS / PRIVATE KEYS
+# ---------------------------------------------------------------
+*.pem
+*.key
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+*.cer
+*.crt
+*.pfx
+*.der
+*.csr
+*.ovpn
+id_rsa
+id_rsa.*
+id_dsa
+id_dsa.*
+id_ecdsa
+id_ed25519
+*.asc
+*.gpg
+secrets.json
+secret*.json
+*.secret
+*.secret.*
+.env.keys
+
+# react
+.DS_*
+*.log
+logs
+**/*.backup.*
+**/*.back.*
+
+*.sublime*
+
+psd
+thumb
+sketch
+
+# End of https://www.toptal.com/developers/gitignore/api/react,firebase
