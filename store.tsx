@@ -33,6 +33,7 @@ type Persisted = {
   sessions: Session[]; // newest first
   customPrograms: Program[];
   profile: Profile;
+  checkins: string[]; // days marked as workout days by hand, as YYYY-MM-DD
 };
 
 type Store = Persisted & {
@@ -48,6 +49,7 @@ type Store = Persisted & {
   deleteSession: (id: string) => void;
   addProgram: (p: Program) => void;
   deleteProgram: (id: string) => void;
+  toggleCheckin: (dayKey: string) => void;
   resetAll: () => void;
 };
 
@@ -71,6 +73,7 @@ const DEFAULTS: Persisted = {
   sessions: [],
   customPrograms: [],
   profile: DEFAULT_PROFILE,
+  checkins: [],
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -89,7 +92,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const { bodyweight: legacyBodyweight, ...parsed } = JSON.parse(raw);
             const profile: Profile = { ...DEFAULT_PROFILE, ...(parsed.profile ?? {}) };
             if (!parsed.profile && typeof legacyBodyweight === 'number') profile.bodyweightKg = legacyBodyweight;
-            next = { ...DEFAULTS, ...parsed, profile };
+            next = {
+              ...DEFAULTS,
+              ...parsed,
+              profile,
+              checkins: Array.isArray(parsed.checkins) ? parsed.checkins : [],
+            };
           } catch {}
         }
         // IDs made on the phone in earlier versions were not unique, so only keep IDs from a real account
@@ -115,6 +123,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       ...data,
+      checkins: data.checkins ?? [],
       loaded,
       programs: [...BUILTIN_PROGRAMS, ...data.customPrograms],
       bodyweight: data.profile.bodyweightKg,
@@ -128,7 +137,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addProgram: (p) => setData((d) => ({ ...d, customPrograms: [...d.customPrograms, p] })),
       deleteProgram: (id) =>
         setData((d) => ({ ...d, customPrograms: d.customPrograms.filter((p) => p.id !== id) })),
-      // Clears logged sessions and custom protocols; keeps theme and your profile
+      toggleCheckin: (key) =>
+        setData((d) => ({
+          ...d,
+          checkins: d.checkins.includes(key) ? d.checkins.filter((k) => k !== key) : [...d.checkins, key],
+        })),
+      // Clears logged sessions, check-ins and custom protocols; keeps theme and your profile
       resetAll: () => setData((d) => ({ ...DEFAULTS, accent: d.accent, profile: d.profile })),
     }),
     [data, loaded, photo]

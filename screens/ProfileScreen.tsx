@@ -22,7 +22,7 @@ export default function ProfileScreen({ nav }: { nav: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <Header title="Profile" />
+      <Header title="Profile" onBack={nav.back} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130, gap: 14 }}>
         <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
           <Avatar size={56} />
@@ -45,7 +45,7 @@ export default function ProfileScreen({ nav }: { nav: Nav }) {
 
         <Button title="Edit account" icon="create" onPress={() => nav.go({ name: 'account' })} />
         <Button title="Strength plan" icon="trending-up" variant="ghost" onPress={() => nav.go({ name: 'plan' })} />
-        <Button title="Leaderboard" icon="trophy" variant="ghost" onPress={() => nav.go({ name: 'leaderboard' })} />
+        <Button title="Leaderboard" icon="trophy" variant="ghost" onPress={() => nav.tab({ name: 'leaderboard' })} />
         {cloud.user?.isAdmin && (
           <Button title="Admin dashboard" icon="shield-checkmark" onPress={() => nav.go({ name: 'admin' })} />
         )}

@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { Anton_400Regular } from '@expo-google-fonts/anton/400Regular';
-import { InstrumentSerif_400Regular_Italic } from '@expo-google-fonts/instrument-serif/400Regular_Italic';
+import { SpaceGrotesk_500Medium } from '@expo-google-fonts/space-grotesk/500Medium';
+import { SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk/700Bold';
+import { DotGothic16_400Regular } from '@expo-google-fonts/dotgothic16/400Regular';
 import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
 import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
@@ -25,6 +26,8 @@ import PlanScreen from './screens/PlanScreen';
 import AuthScreen from './screens/AuthScreen';
 import LeaderboardScreen from './screens/LeaderboardScreen';
 import AdminScreen from './screens/AdminScreen';
+import CalendarScreen from './screens/CalendarScreen';
+import DiscoverScreen from './screens/DiscoverScreen';
 import { CloudProvider } from './lib/CloudContext';
 
 export default function App() {
@@ -41,8 +44,9 @@ function Root() {
   const { loaded, accent } = useStore();
   const colors = useMemo(() => makeColors(accent), [accent]);
   const [fontsLoaded, fontError] = useFonts({
-    Anton_400Regular,
-    InstrumentSerif_400Regular_Italic,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_700Bold,
+    DotGothic16_400Regular,
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -60,7 +64,7 @@ function Root() {
   );
 }
 
-const TAB_ROUTES: Route['name'][] = ['home', 'workouts', 'history', 'profile'];
+const TAB_ROUTES: Route['name'][] = ['home', 'discover', 'workouts', 'history', 'leaderboard', 'profile'];
 
 function Navigator() {
   const { sessions, profile } = useStore();
@@ -139,6 +143,12 @@ function Navigator() {
       break;
     case 'admin':
       screen = <AdminScreen nav={nav} />;
+      break;
+    case 'calendar':
+      screen = <CalendarScreen nav={nav} date={route.date} />;
+      break;
+    case 'discover':
+      screen = <DiscoverScreen />;
       break;
   }
 

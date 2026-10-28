@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// Paste this into Firebase console > Firestore Database > Rules, then press Publish.
+// Test it in the console's "Rules Playground" before sharing the app with other people.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function counterPath() {
+      return /databases/$(database)/documents/meta/counter;
+    }
+
+    function okLift(x) {
+      return x is number && x >= 0 && x <= 700;
+    }
+
+    // The ID counter. It can only go up by exactly 1 and can never reach 9999, which is the admin's ID.
+    match /meta/counter {
+      allow read: if signedIn();
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly(['next'])
+        && request.resource.data.next == resource.data.next + 1
+        && request.resource.data.next <= 9999;
+    }
+
+    // Admins are added by hand in the console. The app can never write here.
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      // You can read your own account. Admins can read (and count) every account.
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // A new account must take the next number from the counter in the SAME transaction,
+      // so every user gets a different ID and nobody can pick their own.
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['personalId', 'name', 'avatar', 'photo', 'createdAt', 'lastSeenAt', 'showOnBoard'])
+        && request.resource.data.personalId == 'GK-' + string(get(counterPath()).data.next)
+        && getAfter(counterPath()).data.next == get(counterPath()).data.next + 1
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.showOnBoard == false
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.get('photo', '').size() <= 100000;
+
+      // The ID and the sign-up date can never be changed from the app.
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['personalId', 'name', 'avatar', 'photo', 'createdAt', 'lastSeenAt', 'showOnBoard'])
+        && request.resource.data.personalId == resource.data.personalId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.get('photo', '').size() <= 100000;
+
+      allow delete: if false;
+    }
+
+    // Public leaderboard. Everyone signed in can read. You can only write your own entry,
+    // only after joining, and only under the ID you were given.
+    match /leaderboard/{uid} {
+      allow read: if signedIn();
+
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && get(/databases/$(database)/documents/users/$(uid)).data.showOnBoard == true
+        && request.resource.data.personalId == get(/databases/$(database)/documents/users/$(uid)).data.personalId
+        && request.resource.data.keys().hasOnly(['personalId', 'name', 'avatar', 'weightClass', 'bench', 'squat', 'deadlift', 'ohp', 'total', 'sets', 'levels', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 40
+        && okLift(request.resource.data.get('bench', 0))
+        && okLift(request.resource.data.get('squat', 0))
+        && okLift(request.resource.data.get('deadlift', 0))
+        && okLift(request.resource.data.get('ohp', 0))
+        && okLift(request.resource.data.get('total', 0) / 4);
+
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}

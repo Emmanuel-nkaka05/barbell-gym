@@ -31,6 +31,8 @@ export type CloudUser = {
   name: string;
   isAdmin: boolean;
   showOnBoard: boolean;
+  avatar: string; // icon avatar saved with the account
+  photo: string; // profile photo as a small data URI, or '' when there is none
 };
 
 export function friendlyError(e: any): string {
@@ -117,6 +119,8 @@ export async function loadAccount(uid: string, email: string | null, fallbackNam
     name: data.name,
     isAdmin: admin.exists(),
     showOnBoard: !!data.showOnBoard,
+    avatar: (data as any).avatar ?? 'person',
+    photo: (data as any).photo ?? '',
   };
 }
 
@@ -128,6 +132,9 @@ export const renameAccount = (uid: string, name: string) =>
 
 export const updateAvatar = (uid: string, avatar: string) =>
   updateDoc(doc(db, 'users', uid), { avatar }).catch(() => {});
+
+/** Saves the profile photo with the account. Pass '' to remove it. */
+export const savePhoto = (uid: string, photo: string) => updateDoc(doc(db, 'users', uid), { photo });
 
 export async function setShowOnBoard(uid: string, show: boolean) {
   await updateDoc(doc(db, 'users', uid), { showOnBoard: show });

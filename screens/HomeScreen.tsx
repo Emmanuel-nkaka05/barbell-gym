@@ -1,28 +1,53 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, fonts, mono, useColors } from '../theme';
+import { Colors, fonts, mono, radius, useColors } from '../theme';
 import { Label, Panel, useTopPad } from '../components/Panel';
+import { Avatar } from '../components/Avatar';
+import Gauge from '../components/Gauge';
+import ThemeSheet from '../components/ThemeSheet';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { estMinutes, totalSets } from '../data/programs';
-import { computeMetrics, fmt, nextProgram, weekDays } from '../lib/metrics';
+import { computeMetrics, fmt, nextProgram, weekDays, weeklyTotals } from '../lib/metrics';
+import { dayKey, streaks, workoutDays } from '../lib/dates';
 import { kgToUnit } from '../lib/units';
-import { Avatar } from '../components/Avatar';
-import BodyGuide from '../components/BodyGuide';
 import type { Nav } from '../nav';
+
+const WEEK_GOAL = 4; // workouts per week the missions gauge counts toward
+const LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export default function HomeScreen({ nav }: { nav: Nav }) {
   const c = useColors();
   const s = useMemo(() => makeStyles(c), [c]);
   const top = useTopPad();
-  const { sessions, bodyweight, programs, profile, unit } = useStore();
+  const { sessions, bodyweight, programs, profile, unit, checkins = [] } = useStore();
+  const [themeOpen, setThemeOpen] = useState(false);
 
-  const week = useMemo(() => weekDays(sessions), [sessions]);
+  const days = useMemo(() => workoutDays(sessions, checkins), [sessions, checkins]);
+  const streak = useMemo(() => streaks(days).current, [days]);
   const m = useMemo(() => computeMetrics(sessions, bodyweight), [sessions, bodyweight]);
+  const daily = useMemo(() => weekDays(sessions), [sessions]);
+  const weeks = useMemo(() => weeklyTotals(sessions, bodyweight, 8), [sessions, bodyweight]);
   const next = nextProgram(programs, sessions);
-  const maxVol = Math.max(...week.map((d) => d.volume), 1);
   const topEx = m.top ? EXERCISE_MAP[m.top.exerciseId] : null;
+
+  const pills = useMemo(() => {
+    const now = new Date();
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const todayK = dayKey(now);
+    return LETTERS.map((letter, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const k = dayKey(d);
+      return { k, letter, n: d.getDate(), today: k === todayK, trained: days.has(k) };
+    });
+  }, [days]);
+
+  const maxVol = Math.max(...daily.map((d) => d.volume), 1);
+  const maxKcal = Math.max(...weeks.map((w) => w.kcal), 1);
+  const firstName = (profile.name || 'Agent').split(' ')[0].toUpperCase();
 
   return (
     <View style={s.root}>
@@ -30,123 +55,162 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
         contentContainerStyle={{ paddingTop: top, paddingHorizontal: 18, paddingBottom: 130, gap: 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={s.header}>
-          <Avatar size={46} />
-          <View style={{ marginLeft: 12 }}>
-            <Label style={{ color: c.muted }}>ID {profile.personalId || 'not registered'}</Label>
-            <Text style={s.agent}>Agent {profile.name}</Text>
+        {/* welcome */}
+        <View style={s.hero}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.welcome}>WELCOME,</Text>
+            <Text style={s.name} numberOfLines={1} adjustsFontSizeToFit>
+              {firstName}.
+            </Text>
+            <Label style={{ color: c.muted, marginTop: 8 }}>ID {profile.personalId || 'not registered'}</Label>
+          </View>
+          <Pressable onPress={() => nav.go({ name: 'profile' })}>
+            <Avatar size={88} />
+          </Pressable>
+        </View>
+
+        {/* title and calendar */}
+        <View style={s.titleRow}>
+          <Text style={s.dash}>DASHBOARD</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Pressable onPress={() => setThemeOpen(true)} style={s.calBtn} hitSlop={8}>
+              <Ionicons name="color-palette" size={20} color={c.accent} />
+            </Pressable>
+            <Pressable onPress={() => nav.go({ name: 'calendar' })} style={s.calBtn} hitSlop={8}>
+              <Ionicons name="calendar" size={20} color={c.accent} />
+            </Pressable>
           </View>
         </View>
 
-        <Panel style={{ gap: 12 }}>
-          <Label>Tactical status: active</Label>
-          <Text style={s.welcome}>Welcome back, {profile.name.split(' ')[0]}</Text>
-          <View style={s.weekRow}>
-            {week.map((d) => (
-              <View key={d.name} style={[s.day, d.isToday && s.dayActive]}>
-                <Text style={[s.dayName, d.isToday && { color: c.onAccent }]}>{d.name}</Text>
-                <Text style={[s.dayNum, d.isToday && { color: c.onAccent }]}>{d.date}</Text>
-                <View
-                  style={[
-                    s.dot,
-                    { backgroundColor: d.trained ? (d.isToday ? c.onAccent : c.accent) : 'transparent' },
-                  ]}
-                />
-              </View>
-            ))}
-          </View>
-        </Panel>
+        <View style={s.pillRow}>
+          {pills.map((p) => (
+            <Pressable
+              key={p.k}
+              onPress={() => nav.go({ name: 'calendar', date: p.k })}
+              style={[s.pill, p.today && s.pillToday, p.trained && s.pillOn]}
+            >
+              <Text style={[s.pillNum, p.trained && { color: c.onAccent }]}>{p.n}</Text>
+              <Text style={[s.pillLetter, p.trained && { color: c.onAccent }]}>{p.letter}</Text>
+            </Pressable>
+          ))}
+        </View>
 
-        <View style={s.grid}>
-          <Panel style={s.stat}>
-            <View style={s.statHead}>
-              <Label style={{ color: c.muted }}>Weekly volume</Label>
+        {/* stats */}
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Panel style={[s.card, { flex: 1 }]}>
+            <View style={s.cardHead}>
+              <Label style={{ color: c.muted }}>Volume</Label>
               <Ionicons name="barbell" size={16} color={c.accent} />
             </View>
-            <Text style={s.statValue}>
-              {fmt(kgToUnit(m.weekVolume, unit))} <Text style={s.unit}>{unit}</Text>
-            </Text>
+            <Text style={s.big}>{fmt(kgToUnit(m.weekVolume, unit))}</Text>
+            <Text style={s.unit}>{unit} this week</Text>
             <View style={s.bars}>
-              {week.map((d) => (
+              {daily.map((d) => (
                 <View
                   key={d.name}
                   style={{
                     flex: 1,
-                    height: 5 + (d.volume / maxVol) * 30,
-                    borderRadius: 3,
-                    backgroundColor: d.trained ? c.accent : c.edge,
+                    height: 6 + (d.volume / maxVol) * 84,
+                    borderRadius: 4,
+                    backgroundColor: d.volume > 0 ? c.accent : c.edge,
                   }}
                 />
               ))}
             </View>
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              {LETTERS.map((l, i) => (
+                <Text key={i} style={s.barLetter}>
+                  {l}
+                </Text>
+              ))}
+            </View>
           </Panel>
 
-          <Panel style={s.stat}>
-            <View style={s.statHead}>
-              <Label style={{ color: c.muted }}>Caloric burn</Label>
-              <Ionicons name="flame" size={16} color={c.orange} />
-            </View>
-            <Text style={s.statValue}>
-              {fmt(m.weekKcal)} <Text style={s.unit}>kcal</Text>
-            </Text>
-            <Text style={s.note}>Estimate, this week</Text>
-          </Panel>
-
-          <Panel style={s.stat}>
-            <View style={s.statHead}>
-              <Label style={{ color: c.muted }}>Missions</Label>
-              <Ionicons name="checkmark-done" size={16} color={c.green} />
-            </View>
-            <Text style={s.statValue}>
-              {m.weekSessions} <Text style={s.unit}>this week</Text>
-            </Text>
-            <Text style={s.note}>{m.total} total logged</Text>
-          </Panel>
-
-          <Panel style={s.stat}>
-            <View style={s.statHead}>
-              <Label style={{ color: c.muted }}>Top lift</Label>
-              <Ionicons name="trophy" size={16} color={c.cyan} />
-            </View>
-            <Text style={s.statValue}>
-              {m.top ? Math.round(kgToUnit(m.top.best.e1rm, unit)) : '--'} <Text style={s.unit}>{unit}</Text>
-            </Text>
-            <Text style={s.note} numberOfLines={1}>
-              {topEx ? `${topEx.name}, est. 1RM` : 'Log a lift to track'}
-            </Text>
-          </Panel>
+          <View style={{ flex: 1, gap: 12 }}>
+            <Panel style={[s.card, { flex: 1 }]}>
+              <View style={s.cardHead}>
+                <Label style={{ color: c.muted }}>Cal burn</Label>
+                <Ionicons name="flame" size={16} color={c.orange} />
+              </View>
+              <Text style={s.big}>{fmt(m.weekKcal)}</Text>
+              <Text style={s.unit}>kcal, estimate</Text>
+              <Gauge progress={m.weekKcal / maxKcal} color={c.orange} />
+            </Panel>
+            <Panel style={[s.card, { flex: 1 }]}>
+              <View style={s.cardHead}>
+                <Label style={{ color: c.muted }}>Missions</Label>
+                <Ionicons name="checkmark-done" size={16} color={c.green} />
+              </View>
+              <Text style={s.big}>
+                {m.weekSessions}
+                <Text style={s.unit}> / {WEEK_GOAL}</Text>
+              </Text>
+              <Text style={s.unit}>this week</Text>
+              <Gauge progress={m.weekSessions / WEEK_GOAL} color={c.green} />
+            </Panel>
+          </View>
         </View>
 
-        <BodyGuide />
-
+        {/* protocol of the day */}
         <View style={s.sectionRow}>
-          <Text style={s.section}>Next protocol</Text>
+          <Text style={s.section}>Protocol of the day</Text>
           <Pressable onPress={() => nav.tab({ name: 'workouts' })}>
-            <Label>All protocols</Label>
+            <Label>View all</Label>
           </Pressable>
         </View>
 
         <Pressable onPress={() => nav.go({ name: 'detail', programId: next.id })}>
           <Panel style={s.protocol}>
             <View style={s.thumb}>
-              <Ionicons name="barbell" size={34} color={c.accent} />
+              <Ionicons name="barbell" size={32} color={c.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Label numberOfLines={1}>{next.level}</Label>
-              <Text style={s.protoTitle}>{next.name}</Text>
+              <Text style={s.protoTitle} numberOfLines={1}>
+                {next.name}
+              </Text>
               <Text style={s.protoMeta}>
                 {estMinutes(next)} min  |  {totalSets(next)} sets
               </Text>
             </View>
-            <Pressable
-              onPress={() => nav.go({ name: 'session', programId: next.id })}
-              style={s.play}
-              hitSlop={8}
-            >
+            <Pressable onPress={() => nav.go({ name: 'session', programId: next.id })} style={s.play} hitSlop={8}>
               <Ionicons name="play" size={20} color={c.onAccent} />
             </Pressable>
           </Panel>
         </Pressable>
+
+        {/* tactical stats */}
+        <View style={s.sectionRow}>
+          <Text style={s.section}>Tactical stats</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <Panel style={[s.card, { flex: 1 }]}>
+            <View style={s.cardHead}>
+              <Label style={{ color: c.muted }}>Top lift</Label>
+              <Ionicons name="trophy" size={16} color={c.cyan} />
+            </View>
+            <Text style={s.big}>
+              {m.top ? Math.round(kgToUnit(m.top.best.e1rm, unit)) : '--'}
+              <Text style={s.unit}> {unit}</Text>
+            </Text>
+            <Text style={s.unit} numberOfLines={1}>
+              {topEx ? `${topEx.name}, est. 1RM` : 'Log a lift to track'}
+            </Text>
+          </Panel>
+          <Pressable style={{ flex: 1 }} onPress={() => nav.go({ name: 'calendar' })}>
+            <Panel style={[s.card, { flex: 1 }]}>
+              <View style={s.cardHead}>
+                <Label style={{ color: c.muted }}>Streak</Label>
+                <Ionicons name="calendar" size={16} color={c.accent} />
+              </View>
+              <Text style={s.big}>
+                {streak}
+                <Text style={s.unit}> {streak === 1 ? 'day' : 'days'}</Text>
+              </Text>
+              <Text style={s.unit}>tap for calendar</Text>
+            </Panel>
+          </Pressable>
+        </View>
 
         <Pressable onPress={() => nav.go({ name: 'plan' })}>
           <Panel style={s.protocol}>
@@ -161,21 +225,8 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
             <Ionicons name="chevron-forward" size={20} color={c.muted} />
           </Panel>
         </Pressable>
-
-        <Pressable onPress={() => nav.go({ name: 'leaderboard' })}>
-          <Panel style={s.protocol}>
-            <View style={s.thumb}>
-              <Ionicons name="trophy" size={30} color={c.accent} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Label>Leaderboard</Label>
-              <Text style={s.protoTitle}>See what others lift</Text>
-              <Text style={s.protoMeta}>Bench, squat, deadlift, press</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={c.muted} />
-          </Panel>
-        </Pressable>
       </ScrollView>
+      <ThemeSheet visible={themeOpen} onClose={() => setThemeOpen(false)} />
     </View>
   );
 }
@@ -183,51 +234,62 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
 const makeStyles = (c: Colors) =>
   StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg },
-    header: { flexDirection: 'row', alignItems: 'center' },
-    avatar: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
-      borderWidth: 1.5,
-      borderColor: c.accent,
+    hero: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    welcome: { color: c.text, fontFamily: fonts.display, fontSize: 34, lineHeight: 38 },
+    name: { color: c.text, fontFamily: fonts.display, fontSize: 40, lineHeight: 44 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    dash: { color: c.accent, fontFamily: fonts.serif, fontSize: 30, letterSpacing: 1 },
+    calBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.edge,
       backgroundColor: c.panel,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    agent: { color: c.text, fontSize: 22, fontFamily: fonts.display, textTransform: 'uppercase', marginTop: 2 },
-    welcome: { color: c.text, fontFamily: fonts.serif, fontSize: 28 },
-    weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    day: { flex: 1, marginHorizontal: 2, alignItems: 'center', paddingVertical: 8, borderRadius: 10 },
-    dayActive: { backgroundColor: c.accent },
-    dayName: { color: c.muted, fontFamily: mono, fontSize: 9 },
-    dayNum: { color: c.text, fontFamily: mono, fontSize: 15, fontWeight: '700', marginTop: 2 },
-    dot: { width: 5, height: 5, borderRadius: 3, marginTop: 4 },
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-    stat: { width: '48%', flexGrow: 1, minHeight: 112, justifyContent: 'space-between', padding: 14 },
-    statHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    statValue: { color: c.text, fontSize: 30, fontFamily: fonts.display },
-    unit: { fontSize: 11, color: c.muted, fontWeight: '400' },
-    note: { color: c.muted, fontFamily: mono, fontSize: 10 },
-    bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 36 },
+    pillRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
+    pill: {
+      flex: 1,
+      height: 62,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.edge,
+      backgroundColor: c.panel,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 2,
+    },
+    pillToday: { borderColor: c.accent, borderWidth: 1.5 },
+    pillOn: { backgroundColor: c.accent },
+    pillNum: { color: c.text, fontFamily: fonts.display, fontSize: 18 },
+    pillLetter: { color: c.muted, fontFamily: fonts.bodySemi, fontSize: 10 },
+    card: { padding: 14, gap: 4 },
+    cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    big: { color: c.text, fontFamily: fonts.display, fontSize: 28 },
+    unit: { color: c.muted, fontFamily: mono, fontSize: 11 },
+    bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 96, marginTop: 10 },
+    barLetter: { flex: 1, textAlign: 'center', color: c.muted, fontFamily: mono, fontSize: 9, marginTop: 4 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     section: { color: c.text, fontSize: 22, fontFamily: fonts.display, textTransform: 'uppercase' },
     protocol: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     thumb: {
       width: 64,
       height: 64,
-      borderRadius: 10,
+      borderRadius: radius.small,
       backgroundColor: c.panelRaised,
       borderWidth: 1,
       borderColor: c.edge,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    protoTitle: { color: c.text, fontSize: 19, fontFamily: fonts.display, textTransform: 'uppercase', marginTop: 4 },
-    protoMeta: { color: c.muted, fontFamily: mono, fontSize: 10, marginTop: 4 },
+    protoTitle: { color: c.text, fontSize: 18, fontFamily: fonts.display, marginTop: 4 },
+    protoMeta: { color: c.muted, fontFamily: mono, fontSize: 11, marginTop: 4 },
     play: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       backgroundColor: c.accent,
       alignItems: 'center',
       justifyContent: 'center',

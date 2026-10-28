@@ -7,6 +7,7 @@ import { Avatar, AVATARS } from '../components/Avatar';
 import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
 import { useStore } from '../store';
 import { useCloud } from '../lib/CloudContext';
+import { PHOTO_LIMIT, makeAvatar } from '../lib/photo';
 import { fmtNum, fmtWeight, kgToUnit, unitToKg } from '../lib/units';
 import type { Unit } from '../lib/units';
 import type { Nav } from '../nav';
@@ -78,8 +79,19 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
       const res = camera
         ? await ImagePicker.launchCameraAsync(opts)
         : await ImagePicker.launchImageLibraryAsync(opts);
-      const b64 = res.canceled ? null : res.assets?.[0]?.base64;
-      if (b64) setPhoto(`data:image/jpeg;base64,${b64}`);
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      // shrink to a small square so it can be saved with the account; fall back to the picked photo
+      const small = await makeAvatar(asset.uri);
+      const dataUri = small ?? (asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : null);
+      if (!dataUri) return;
+      setPhoto(dataUri);
+      if (cloud.user && dataUri.length > PHOTO_LIMIT) {
+        Alert.alert(
+          'Saved on this phone only',
+          'This photo is too big to save with your account, so it will not follow you to other phones. Update the app with the image tools (see the setup notes) and pick it again.'
+        );
+      }
     } catch {
       Alert.alert('Could not load the photo', 'Please try again.');
     }

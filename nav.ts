@@ -11,7 +11,9 @@ export type Route =
   | { name: 'plan' }
   | { name: 'auth' }
   | { name: 'leaderboard' }
-  | { name: 'admin' };
+  | { name: 'admin' }
+  | { name: 'discover' }
+  | { name: 'calendar'; date?: string };
 
 export type Nav = {
   /** push a screen on top of the current one */

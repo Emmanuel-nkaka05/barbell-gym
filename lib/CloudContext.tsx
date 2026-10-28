@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useStore } from '../store';
+import type { Profile } from '../store';
+import { PHOTO_LIMIT } from './photo';
 import { auth } from './firebase';
 import { cloudConfigured } from './firebaseConfig';
 import * as cloud from './cloud';
@@ -27,7 +29,7 @@ type Cloud = {
 const CloudContext = createContext<Cloud | null>(null);
 
 export function CloudProvider({ children }: { children: React.ReactNode }) {
-  const { profile, sessions, updateProfile } = useStore();
+  const { profile, sessions, updateProfile, photo, setPhoto } = useStore();
   const [user, setUser] = useState<CloudUser | null>(null);
   const [ready, setReady] = useState(!cloudConfigured);
   const [busy, setBusy] = useState(false);
@@ -51,7 +53,12 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
         const info = await cloud.loadAccount(fbUser.uid, fbUser.email, fallback);
         setUser(info);
         setError(null);
-        updateProfile({ personalId: info.personalId, registered: true, name: info.name });
+        const patch: Partial<Profile> = { personalId: info.personalId, registered: true, name: info.name };
+        // keep an avatar picked before signing in if the account has no avatar yet
+        if (info.avatar && info.avatar !== 'person') patch.avatar = info.avatar;
+        updateProfile(patch);
+        // the photo saved with the account wins, so it is the same every time you log in
+        if (info.photo) setPhoto(info.photo);
         cloud.touchLastSeen(fbUser.uid);
       } catch (e) {
         setError(cloud.friendlyError(e));
@@ -73,10 +80,27 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(t);
   }, [user?.uid, showOnBoard, sessions[0]?.id, sessions.length, profile.bodyweightKg, profile.avatar, user?.name]);
 
-  // Keep the chosen avatar icon in the cloud too
+  // Save a changed avatar icon with the account. At sign-in the phone takes the account's avatar
+  // first, so the two match and nothing is overwritten.
   useEffect(() => {
-    if (user) cloud.updateAvatar(user.uid, profile.avatar);
-  }, [user?.uid, profile.avatar]);
+    if (!user || profile.avatar === user.avatar) return;
+    const next = profile.avatar;
+    cloud
+      .updateAvatar(user.uid, next)
+      .then(() => setUser((u) => (u ? { ...u, avatar: next } : u)))
+      .catch(() => {});
+  }, [user?.uid, user?.avatar, profile.avatar]);
+
+  // Save a new or removed profile photo with the account. Photos too big for the account stay on this phone.
+  useEffect(() => {
+    if (!user) return;
+    const local = photo ?? '';
+    if (local === user.photo || local.length > PHOTO_LIMIT) return;
+    cloud
+      .savePhoto(user.uid, local)
+      .then(() => setUser((u) => (u ? { ...u, photo: local } : u)))
+      .catch(() => {});
+  }, [photo, user?.uid, user?.photo]);
 
   const value = useMemo<Cloud>(
     () => ({
@@ -123,7 +147,9 @@ export function CloudProvider({ children }: { children: React.ReactNode }) {
       },
       signOut: async () => {
         await cloud.signOutNow().catch(() => {});
-        updateProfile({ registered: false, personalId: '' });
+        // the photo belongs to the account, so it must not show for the next person who signs in here
+        setPhoto(null);
+        updateProfile({ registered: false, personalId: '', avatar: 'person' });
       },
       setShowOnBoard: async (show) => {
         if (!user) return 'Sign in first.';

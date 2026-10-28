@@ -77,7 +77,7 @@ export default function LeaderboardScreen({ nav }: { nav: Nav }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <Header title="Leaderboard" onBack={nav.back} />
+      <Header title="League" />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 60, gap: 12 }}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={c.accent} />}

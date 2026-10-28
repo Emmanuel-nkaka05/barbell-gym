@@ -121,8 +121,9 @@ export const useColors = () => useContext(ColorsContext);
 
 // Font families (loaded in App.tsx).
 export const fonts = {
-  display: 'Anton_400Regular', // heavy condensed, for headings and big numbers
-  serif: 'InstrumentSerif_400Regular_Italic', // editorial italic accent
+  display: 'SpaceGrotesk_700Bold', // headings and big numbers
+  serif: 'SpaceGrotesk_500Medium', // buttons, greetings and links (name kept from version 1)
+  dots: 'DotGothic16_400Regular', // dot-matrix style protocol titles
   body: 'Inter_400Regular',
   bodyMedium: 'Inter_500Medium',
   bodySemi: 'Inter_600SemiBold',

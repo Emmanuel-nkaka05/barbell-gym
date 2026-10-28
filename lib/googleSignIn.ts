@@ -1,12 +1,25 @@
+import { NativeModules, TurboModuleRegistry } from 'react-native';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from './firebase';
 import { googleWebClientId } from './firebaseConfig';
 
 /**
- * The Google sign-in module is native code. It does not exist inside Expo Go, only in a
- * development build. It is loaded lazily and inside try/catch so the app keeps working in Expo Go.
+ * True only when the native Google sign-in code is inside this app (a development build made after
+ * the package was installed). In Expo Go, or in an older build, it is missing.
+ *
+ * This check has to come BEFORE the require() below. Loading the package without its native code
+ * does not throw an error we can catch: React Native reports it as a fatal red screen instead.
  */
+const hasNativeModule = () => {
+  try {
+    return !!(TurboModuleRegistry.get('RNGoogleSignin') ?? (NativeModules as any).RNGoogleSignin);
+  } catch {
+    return false;
+  }
+};
+
 function loadModule(): any | null {
+  if (!hasNativeModule()) return null;
   try {
     return require('@react-native-google-signin/google-signin');
   } catch {

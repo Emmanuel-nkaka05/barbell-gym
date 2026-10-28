@@ -165,3 +165,19 @@ export const EXERCISES: Exercise[] = [
 export const EXERCISE_MAP: Record<string, Exercise> = Object.fromEntries(
   EXERCISES.map((e) => [e.id, e])
 );
+
+/** What each exercise is best for, shown as "Best for ..." on protocol pages. */
+export const FOCUS: Record<string, string> = {
+  squat: 'legs',
+  bench: 'chest',
+  deadlift: 'back and legs',
+  ohp: 'shoulders',
+  row: 'back',
+  shrug: 'traps',
+  curl: 'biceps',
+  skull: 'triceps',
+  rdl: 'hamstrings',
+  'front-squat': 'quads',
+  'hip-thrust': 'glutes',
+  lunge: 'legs',
+};

@@ -89,7 +89,7 @@ export function Button({ title, onPress, icon, variant = 'solid', disabled, styl
       ]}
     >
       {icon && <Ionicons name={icon} size={18} color={solid ? c.onAccent : c.accent} />}
-      <Text style={{ color: solid ? c.onAccent : c.accent, fontSize: 19, fontFamily: fonts.serif }}>{title}</Text>
+      <Text style={{ color: solid ? c.onAccent : c.accent, fontSize: 16, fontFamily: fonts.display }}>{title}</Text>
     </Pressable>
   );
 }
