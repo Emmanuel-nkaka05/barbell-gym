@@ -67,7 +67,7 @@ yarn-error.*
 # credentials.json
 # keys.json
 # keyfile.json
-
+ 
 # # Any file matching a service account pattern (flexible)
 # **/*service-account*.json
 # **/*serviceaccount*.json
