@@ -49,31 +49,31 @@ yarn-error.*
 # 🔐 GOOGLE / FIREBASE / SERVICE ACCOUNT KEYS — KEEP PRIVATE
 # ---------------------------------------------------------------
 # Google service account & OAuth client secrets
-google-services.json
-GoogleService-Info.plist
-google-services*.json
-google-services.json.*
-service-account*.json
-*-service-account.json
-serviceAccount*.json
-firebase-adminsdk-*.json
-firebase-service-account*.json
-firebaseConfig.json
-firebase-config.json
-gcloud-credentials.json
-gcp-credentials.json
-oauth-client-secret*.json
-client_secret*.json
-credentials.json
-keys.json
-keyfile.json
+# google-services.json
+# GoogleService-Info.plist
+# google-services*.json
+# google-services.json.*
+# service-account*.json
+# *-service-account.json
+# serviceAccount*.json
+# firebase-adminsdk-*.json
+# firebase-service-account*.json
+# firebaseConfig.json
+# firebase-config.json
+# gcloud-credentials.json
+# gcp-credentials.json
+# oauth-client-secret*.json
+# client_secret*.json
+# credentials.json
+# keys.json
+# keyfile.json
 
-# Any file matching a service account pattern (flexible)
-**/*service-account*.json
-**/*serviceaccount*.json
-**/*firebase-adminsdk*.json
-**/*google-services*.json
-**/GoogleService-Info.plist
+# # Any file matching a service account pattern (flexible)
+# **/*service-account*.json
+# **/*serviceaccount*.json
+# **/*firebase-adminsdk*.json
+# **/*google-services*.json
+# **/GoogleService-Info.plist
 
 # Firebase
 .idea

@@ -1,0 +1,51 @@
+# EAS reads THIS file instead of .gitignore when it uploads your project for a build.
+# google-services.json is not ignored here, so EAS receives it.
+
+# dependencies
+node_modules/
+bower_components/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# native folders (EAS makes them in the cloud)
+/ios
+/android
+
+# signing keys and secrets: never upload these
+*.jks
+*.keystore
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.pfx
+*.mobileprovision
+.env
+.env*.local
+.env.production
+.env.development
+.env.staging
+service-account*.json
+*-service-account.json
+serviceAccount*.json
+firebase-adminsdk-*.json
+client_secret*.json
+oauth-client-secret*.json
+
+# files the build does not need (smaller, faster upload)
+.DS_Store
+*.log
+.metro-health-check*
+*.tsbuildinfo
+.vscode/
+/Gemini_Generated_Image*
+/*.ico
+
+# make sure the Firebase Android config is always uploaded
+!google-services.json
