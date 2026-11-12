@@ -28,6 +28,7 @@ import LeaderboardScreen from './screens/LeaderboardScreen';
 import AdminScreen from './screens/AdminScreen';
 import CalendarScreen from './screens/CalendarScreen';
 import DiscoverScreen from './screens/DiscoverScreen';
+import EquipmentScreen from './screens/EquipmentScreen';
 import { CloudProvider } from './lib/CloudContext';
 
 export default function App() {
@@ -127,7 +128,7 @@ function Navigator() {
       screen = <SessionScreen key={route.programId} nav={nav} programId={route.programId} />;
       break;
     case 'builder':
-      screen = <BuilderScreen nav={nav} />;
+      screen = <BuilderScreen key={route.programId ?? 'new'} nav={nav} programId={route.programId} />;
       break;
     case 'account':
       screen = <AccountScreen nav={nav} setup={route.setup} />;
@@ -148,7 +149,10 @@ function Navigator() {
       screen = <CalendarScreen nav={nav} date={route.date} />;
       break;
     case 'discover':
-      screen = <DiscoverScreen />;
+      screen = <DiscoverScreen nav={nav} />;
+      break;
+    case 'equipment':
+      screen = <EquipmentScreen nav={nav} setup={route.setup} />;
       break;
   }
 

@@ -6,14 +6,15 @@ import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
 import BodyFigure from '../components/BodyFigure';
 import HelpModal from '../components/HelpModal';
 import { useStore } from '../store';
-import { EXERCISE_MAP, FOCUS } from '../data/exercises';
+import { EXERCISE_MAP } from '../data/exercises';
+import { gearText, resolveExercise } from '../lib/equipment';
 import { partsForExercises } from '../data/anatomy';
 import { estMinutes, totalSets } from '../data/programs';
 import type { Nav } from '../nav';
 
 export default function DetailScreen({ nav, programId }: { nav: Nav; programId: string }) {
   const c = useColors();
-  const { programs, deleteProgram } = useStore();
+  const { programs, deleteProgram, profile } = useStore();
   const program = programs.find((p) => p.id === programId);
   const [help, setHelp] = useState<string | null>(null);
 
@@ -23,10 +24,13 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
 
   if (!program) return <View style={{ flex: 1, backgroundColor: c.bg }} />;
 
-  const lit = partsForExercises(program.exercises.map((e) => e.exerciseId));
+  // muscles of the exercises actually shown, including no-equipment swaps
+  const lit = partsForExercises(
+    program.exercises.map((e) => resolveExercise(e.exerciseId, profile.equipment).id)
+  );
 
   const confirmDelete = () =>
-    Alert.alert('Delete protocol?', `"${program.name}" will be removed. Your logged sessions stay.`, [
+    Alert.alert('Delete workout?', `"${program.name}" will be removed. Your logged sessions stay.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -47,9 +51,16 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <Header
-        title="Protocol"
+        title="Workout"
         onBack={nav.back}
-        right={program.custom ? <RoundButton icon="trash" onPress={confirmDelete} /> : undefined}
+        right={
+          program.custom ? (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <RoundButton icon="create" onPress={() => nav.go({ name: 'builder', programId: program.id })} />
+              <RoundButton icon="trash" onPress={confirmDelete} />
+            </View>
+          ) : undefined
+        }
       />
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130, gap: 14 }}>
         {/* muscles trained, front and back */}
@@ -65,7 +76,7 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
         </Panel>
 
         <View style={{ gap: 8 }}>
-          <Label>{program.custom ? 'Custom protocol' : program.tag}</Label>
+          <Label>{program.custom ? 'Custom workout' : program.tag}</Label>
           <Text style={{ color: c.text, fontFamily: fonts.dots, fontSize: 32, lineHeight: 38, textTransform: 'uppercase' }}>
             {program.name}
           </Text>
@@ -85,10 +96,12 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
         </Text>
 
         {program.exercises.map((pe, i) => {
-          const ex = EXERCISE_MAP[pe.exerciseId];
+          // swap in the no-equipment version when the user lacks the gear
+          const r = resolveExercise(pe.exerciseId, profile.equipment);
+          const ex = EXERCISE_MAP[r.id];
           if (!ex) return null;
           return (
-            <Pressable key={`${pe.exerciseId}-${i}`} onPress={() => setHelp(pe.exerciseId)}>
+            <Pressable key={`${pe.exerciseId}-${i}`} onPress={() => setHelp(r.id)}>
               <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }}>
                 <View
                   style={{
@@ -106,7 +119,7 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: c.accent, fontFamily: fonts.bodySemi, fontSize: 10 }}>
-                    Best for {FOCUS[pe.exerciseId]}
+                    Best for {ex.focus}
                   </Text>
                   <Text style={{ color: c.text, fontSize: 16, fontFamily: fonts.display, marginTop: 2 }} numberOfLines={1}>
                     {ex.name}
@@ -115,6 +128,16 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
                     {pe.sets} x {pe.reps}
                     {pe.note ? `  |  ${pe.note}` : ''}
                   </Text>
+                  {r.swappedFrom && (
+                    <Text style={{ color: c.orange, fontFamily: mono, fontSize: 10, marginTop: 4 }}>
+                      Swapped in for {EXERCISE_MAP[r.swappedFrom]?.name}, which needs {gearText(EXERCISE_MAP[r.swappedFrom].equipment)}
+                    </Text>
+                  )}
+                  {!r.swappedFrom && r.missing && r.missing.length > 0 && (
+                    <Text style={{ color: c.orange, fontFamily: mono, fontSize: 10, marginTop: 4 }}>
+                      You need: {gearText(r.missing)}
+                    </Text>
+                  )}
                 </View>
                 <View
                   style={{

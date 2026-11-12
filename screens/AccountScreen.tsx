@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, mono, radius, useColors } from '../theme';
 import { Avatar, AVATARS } from '../components/Avatar';
-import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
+import { Button, Header, Label, Panel } from '../components/Panel';
 import { useStore } from '../store';
 import { useCloud } from '../lib/CloudContext';
 import { PHOTO_LIMIT, makeAvatar } from '../lib/photo';
@@ -62,7 +62,7 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
       heightCm,
     });
     if (cloud.user && n !== cloud.user.name) cloud.rename(n);
-    if (setup) nav.tab({ name: 'home' });
+    if (setup) nav.tab({ name: 'equipment', setup: true });
     else nav.back();
   };
 
@@ -145,7 +145,7 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
               <Text style={{ color: c.text, fontSize: 13, fontWeight: '700' }}>Gallery</Text>
             </Pressable>
             {photo && (
-              <Pressable onPress={() => setPhoto(null)} style={chip}>
+              <Pressable onPress={() => cloud.removePhoto()} style={chip}>
                 <Ionicons name="trash-outline" size={16} color={c.muted} />
                 <Text style={{ color: c.muted, fontSize: 13, fontWeight: '700' }}>Remove photo</Text>
               </Pressable>
@@ -159,7 +159,7 @@ export default function AccountScreen({ nav, setup }: { nav: Nav; setup?: boolea
                 <Pressable
                   key={a}
                   onPress={() => {
-                    setPhoto(null);
+                    cloud.removePhoto();
                     updateProfile({ avatar: a });
                   }}
                   style={{

@@ -110,13 +110,13 @@ export const THEMES = {
 export type AccentKey = keyof typeof THEMES;
 
 export function makeColors(key: string) {
-  const t: ThemeDef = (THEMES as Record<string, ThemeDef>)[key] ?? THEMES.gold;
+  const t: ThemeDef = (THEMES as Record<string, ThemeDef>)[key] ?? THEMES.bordo;
   return { ...t, edge: t.accent + '38' }; // accent at about 22% opacity
 }
 
 export type Colors = ReturnType<typeof makeColors>;
 
-export const ColorsContext = createContext<Colors>(makeColors('gold'));
+export const ColorsContext = createContext<Colors>(makeColors('bordo'));
 export const useColors = () => useContext(ColorsContext);
 
 // Font families (loaded in App.tsx).

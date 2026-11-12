@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, mono, radius, useColors } from '../theme';
-import { Button, Header, Label, Panel } from '../components/Panel';
+import { Colors, fonts, mono, radius, useColors } from '../theme';
+import { Button, Header, Label, Panel, RoundButton, useTopPad } from '../components/Panel';
+import DigitalTimer from '../components/DigitalTimer';
 import { ExerciseLog, Session, useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { Program, targetReps } from '../data/programs';
@@ -10,6 +11,7 @@ import { bestLifts, clock, e1rm, fmt, kcalFor, lastWeight, sessionSetCount, sess
 import { fmtWeight, kgToUnit, unitToKg } from '../lib/units';
 import type { Unit } from '../lib/units';
 import { startWeights } from '../lib/plan';
+import { resolveExercise } from '../lib/equipment';
 import HelpModal from '../components/HelpModal';
 import type { Nav } from '../nav';
 
@@ -18,12 +20,19 @@ type Row = { exerciseId: string; sets: SetRow[] };
 
 const REST_SECONDS = 90;
 
-function initRows(program: Program | undefined, unit: Unit, startKg: (id: string) => number): Row[] {
+function initRows(
+  program: Program | undefined,
+  unit: Unit,
+  startKg: (id: string) => number,
+  owned: string[] | null
+): Row[] {
   if (!program) return [];
   return program.exercises.map((pe) => {
-    const w = startKg(pe.exerciseId);
+    // use the no-equipment version when the workout needs gear the user does not have
+    const exerciseId = resolveExercise(pe.exerciseId, owned).id;
+    const w = startKg(exerciseId);
     return {
-      exerciseId: pe.exerciseId,
+      exerciseId,
       sets: Array.from({ length: pe.sets }, () => ({
         weight: w ? fmtWeight(w, unit) : '',
         reps: String(targetReps(pe.reps)),
@@ -36,12 +45,13 @@ function initRows(program: Program | undefined, unit: Unit, startKg: (id: string
 export default function SessionScreen({ nav, programId }: { nav: Nav; programId: string }) {
   const c = useColors();
   const s = useMemo(() => makeStyles(c), [c]);
+  const top = useTopPad();
   const { programs, sessions, bodyweight, addSession, profile, unit } = useStore();
   const program = programs.find((p) => p.id === programId);
 
   const [rows, setRows] = useState<Row[]>(() => {
-    const plan = startWeights(profile);
-    return initRows(program, unit, (id) => lastWeight(sessions, id) || plan[id] || 0);
+    const plan = startWeights(profile, sessions);
+    return initRows(program, unit, (id) => lastWeight(sessions, id) || plan[id] || 0, profile.equipment);
   });
   const [helpId, setHelpId] = useState<string | null>(null);
   const startedAt = useRef(Date.now());
@@ -113,10 +123,10 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
     const before = bestLifts(sessions);
     const prs: string[] = [];
     for (const e of logged) {
-      const top = e.sets.reduce((a, x) => (e1rm(x.weight, x.reps) > e1rm(a.weight, a.reps) ? x : a), e.sets[0]);
-      const v = e1rm(top.weight, top.reps);
+      const topSet = e.sets.reduce((a, x) => (e1rm(x.weight, x.reps) > e1rm(a.weight, a.reps) ? x : a), e.sets[0]);
+      const v = e1rm(topSet.weight, topSet.reps);
       if (v > 0 && v > (before[e.exerciseId]?.e1rm ?? 0)) {
-        prs.push(`${EXERCISE_MAP[e.exerciseId]?.name}: ${fmtWeight(top.weight, unit)} ${unit} x ${top.reps}`);
+        prs.push(`${EXERCISE_MAP[e.exerciseId]?.name}: ${fmtWeight(topSet.weight, unit)} ${unit} x ${topSet.reps}`);
       }
     }
 
@@ -138,7 +148,7 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
       nav.tab({ name: 'home' });
       return true;
     }
-    Alert.alert('Abort protocol?', doneCount > 0 ? 'Your logged sets will be lost.' : 'Nothing has been logged yet.', [
+    Alert.alert('Abort workout?', doneCount > 0 ? 'Your logged sets will be lost.' : 'Nothing has been logged yet.', [
       { text: 'Keep training', style: 'cancel' },
       { text: 'Abort', style: 'destructive', onPress: nav.back },
     ]);
@@ -164,7 +174,7 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
     ];
     return (
       <View style={s.root}>
-        <Header title="Protocol complete" />
+        <Header title="Workout complete" />
         <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40, gap: 14 }}>
           <Panel style={{ gap: 14 }}>
             <Label>{session.programName}</Label>
@@ -197,11 +207,28 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
 
   return (
     <View style={s.root}>
-      <Header
-        title={program.name}
-        onBack={() => exitRef.current()}
-        right={<Text style={{ color: c.accent, fontFamily: mono, fontSize: 16, fontWeight: '800' }}>{clock(elapsed)}</Text>}
-      />
+      {/* title wraps onto as many lines as it needs, with the digital timer under it */}
+      <View style={{ paddingTop: top, paddingHorizontal: 18, paddingBottom: 14, gap: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <RoundButton icon="chevron-back" onPress={() => exitRef.current()} />
+          <Text
+            style={{
+              flex: 1,
+              color: c.text,
+              fontSize: 26,
+              lineHeight: 32,
+              fontFamily: fonts.display,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+              paddingTop: 2,
+            }}
+          >
+            {program.name}
+          </Text>
+        </View>
+        <DigitalTimer seconds={elapsed} />
+      </View>
+
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 200, gap: 12 }}
         keyboardShouldPersistTaps="handled"

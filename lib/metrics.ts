@@ -76,12 +76,29 @@ export function lastWeight(sessions: Session[], exerciseId: string) {
   return 0;
 }
 
-/** Rotates through the built-in programs based on the last session. */
-export function nextProgram(programs: Program[], sessions: Session[]) {
-  const builtin = programs.filter((p) => !p.custom);
+/**
+ * Picks the next built-in protocol. Without gear info it rotates through the main four.
+ * With gear info it prefers protocols you can do exactly as written, then ones that need no swaps.
+ */
+export function nextProgram(
+  programs: Program[],
+  sessions: Session[],
+  fit?: (p: Program) => { missing: number; swaps: number }
+) {
+  const all = programs.filter((p) => !p.custom);
+  let pool = all.filter((p) => p.main !== false);
+  if (fit) {
+    const info = all.map((p) => ({ p, ...fit(p) }));
+    const exact = info.filter((x) => x.missing === 0 && x.swaps === 0);
+    const tier1 = exact.filter((x) => x.p.main !== false).map((x) => x.p);
+    const tier2 = exact.map((x) => x.p);
+    const tier3 = info.filter((x) => x.missing === 0).map((x) => x.p);
+    pool = tier1.length ? tier1 : tier2.length ? tier2 : tier3.length ? tier3 : all;
+  }
+  if (!pool.length) pool = all;
   const last = sessions[0]?.programId;
-  const i = builtin.findIndex((p) => p.id === last);
-  return builtin[(i + 1) % builtin.length] ?? programs[0];
+  const i = pool.findIndex((p) => p.id === last);
+  return pool[(i + 1) % pool.length] ?? programs[0];
 }
 
 export function computeMetrics(sessions: Session[], bodyweight: number) {

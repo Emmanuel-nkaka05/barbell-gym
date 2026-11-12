@@ -13,7 +13,7 @@ export const firebaseConfig = {
   projectId: 'barbell-gym-92896',
   storageBucket: 'barbell-gym-92896.firebasestorage.app',
   messagingSenderId: '225501997008',
-  appId: '', // <-- paste the WEB app appId
+  appId: '1:225501997008:web:27950b4dd96d817ab3fbd5', // <-- paste the WEB app appId
 };
 
 // Google sign-in: the Web client ID from Authentication > Sign-in method > Google > Web SDK configuration.

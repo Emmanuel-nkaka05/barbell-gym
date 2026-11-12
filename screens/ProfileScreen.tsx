@@ -6,6 +6,7 @@ import { Button, Header, Label, Panel } from '../components/Panel';
 import { useStore } from '../store';
 import { Avatar } from '../components/Avatar';
 import { useCloud } from '../lib/CloudContext';
+import { authPersists } from '../lib/firebase';
 import { fmtWeight } from '../lib/units';
 import type { Nav } from '../nav';
 
@@ -15,7 +16,7 @@ export default function ProfileScreen({ nav }: { nav: Nav }) {
   const cloud = useCloud();
 
   const confirmReset = () =>
-    Alert.alert('Erase workout data?', 'This deletes every logged session and custom protocol on this phone. Your profile stays.', [
+    Alert.alert('Erase workout data?', 'This deletes every logged session and custom workout on this phone. Your profile stays.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Erase', style: 'destructive', onPress: resetAll },
     ]);
@@ -44,6 +45,7 @@ export default function ProfileScreen({ nav }: { nav: Nav }) {
         </Panel>
 
         <Button title="Edit account" icon="create" onPress={() => nav.go({ name: 'account' })} />
+        <Button title="My equipment" icon="construct" variant="ghost" onPress={() => nav.go({ name: 'equipment' })} />
         <Button title="Strength plan" icon="trending-up" variant="ghost" onPress={() => nav.go({ name: 'plan' })} />
         <Button title="Leaderboard" icon="trophy" variant="ghost" onPress={() => nav.tab({ name: 'leaderboard' })} />
         {cloud.user?.isAdmin && (
@@ -59,6 +61,12 @@ export default function ProfileScreen({ nav }: { nav: Nav }) {
               ? 'Not signed in. Create an account to get your personal ID and join the leaderboard.'
               : 'Online features are not set up yet. Add your Firebase details in lib/firebaseConfig.ts.'}
           </Text>
+          {cloud.user && !authPersists() && (
+            <Text style={{ color: c.orange, fontSize: 12, lineHeight: 18 }}>
+              Warning: your sign-in is not being saved on this phone, so you will be asked to sign in again after closing
+              the app. Send this message to your developer.
+            </Text>
+          )}
           {cloud.user ? (
             <Button title="Sign out" icon="log-out" variant="ghost" onPress={cloud.signOut} />
           ) : cloud.configured ? (

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { mono, radius, useColors } from '../theme';
+import { fonts, mono, radius, useColors } from '../theme';
 import { Button, Header, IconName, Label, Panel } from '../components/Panel';
+import ExerciseFinder from '../components/ExerciseFinder';
 import { useStore } from '../store';
-import { CATEGORY_LABEL, Category, EXERCISES, EXERCISE_MAP } from '../data/exercises';
+import { EXERCISE_MAP } from '../data/exercises';
 import type { ProgramExercise } from '../data/programs';
 import type { Nav } from '../nav';
 
@@ -46,52 +47,60 @@ function Stepper({
   );
 }
 
-export default function BuilderScreen({ nav }: { nav: Nav }) {
+/** Builds a new custom workout, or edits one when programId is given. */
+export default function BuilderScreen({ nav, programId }: { nav: Nav; programId?: string }) {
   const c = useColors();
-  const { addProgram } = useStore();
-  const [name, setName] = useState('');
-  const [items, setItems] = useState<ProgramExercise[]>([]);
+  const { addProgram, updateProgram, programs } = useStore();
+  const editing = programId ? programs.find((p) => p.id === programId && p.custom) : undefined;
 
-  const has = (id: string) => items.some((i) => i.exerciseId === id);
+  const [name, setName] = useState(editing?.name ?? '');
+  const [items, setItems] = useState<ProgramExercise[]>(editing ? editing.exercises.map((e) => ({ ...e })) : []);
+
   const toggleExercise = (id: string) =>
-    setItems((list) =>
-      list.some((i) => i.exerciseId === id)
-        ? list.filter((i) => i.exerciseId !== id)
-        : [...list, { exerciseId: id, sets: 3, reps: '8' }]
-    );
-  const update = (id: string, p: Partial<ProgramExercise>) =>
-    setItems((list) => list.map((i) => (i.exerciseId === id ? { ...i, ...p } : i)));
+    setItems((list) => {
+      if (list.some((i) => i.exerciseId === id)) return list.filter((i) => i.exerciseId !== id);
+      const bodyweight = (EXERCISE_MAP[id]?.equipment.length ?? 0) === 0;
+      return [...list, { exerciseId: id, sets: 3, reps: bodyweight ? '12' : '8' }];
+    });
+
+  const update = (id: string, patch: Partial<ProgramExercise>) =>
+    setItems((list) => list.map((i) => (i.exerciseId === id ? { ...i, ...patch } : i)));
 
   const save = () => {
     if (!name.trim()) {
-      Alert.alert('Name your protocol', 'Give it a name first.');
+      Alert.alert('Name your workout', 'Give it a name first.');
       return;
     }
     if (items.length === 0) {
-      Alert.alert('Add exercises', 'Pick at least one exercise from the library.');
+      Alert.alert('Add exercises', 'Pick at least one exercise from the list.');
       return;
     }
-    addProgram({
-      id: `custom-${Date.now()}`,
-      name: name.trim(),
-      tag: 'Custom protocol',
-      level: 'Custom',
-      exercises: items,
-      custom: true,
-    });
+    if (editing) {
+      updateProgram(editing.id, { name: name.trim(), exercises: items });
+    } else {
+      addProgram({
+        id: `custom-${Date.now()}`,
+        name: name.trim(),
+        tag: 'Custom workout',
+        level: 'Custom',
+        exercises: items,
+        custom: true,
+      });
+    }
     nav.back();
   };
 
-  const categories: Category[] = ['big4', 'upper', 'lower'];
-
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <Header title="New protocol" onBack={nav.back} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130, gap: 12 }} keyboardShouldPersistTaps="handled">
+      <Header title={editing ? 'Edit workout' : 'New workout'} onBack={nav.back} />
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130, gap: 12 }}
+        keyboardShouldPersistTaps="handled"
+      >
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="Protocol name (e.g. Push Day)"
+          placeholder="Workout name (e.g. Push Day)"
           placeholderTextColor={c.muted}
           style={{
             height: 50,
@@ -111,8 +120,8 @@ export default function BuilderScreen({ nav }: { nav: Nav }) {
             {items.map((it) => (
               <Panel key={it.exerciseId} style={{ gap: 10 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={{ flex: 1, color: c.text, fontSize: 15, fontWeight: '800' }}>
-                    {EXERCISE_MAP[it.exerciseId].name}
+                  <Text style={{ flex: 1, color: c.text, fontSize: 15, fontFamily: fonts.display }}>
+                    {EXERCISE_MAP[it.exerciseId]?.name}
                   </Text>
                   <Pressable onPress={() => toggleExercise(it.exerciseId)} hitSlop={8}>
                     <Ionicons name="close-circle" size={22} color={c.muted} />
@@ -125,7 +134,7 @@ export default function BuilderScreen({ nav }: { nav: Nav }) {
                   <Stepper
                     value={parseInt(it.reps, 10) || 8}
                     min={1}
-                    max={30}
+                    max={60}
                     onChange={(n) => update(it.exerciseId, { reps: String(n) })}
                   />
                 </View>
@@ -134,35 +143,13 @@ export default function BuilderScreen({ nav }: { nav: Nav }) {
           </>
         )}
 
-        {categories.map((cat) => (
-          <View key={cat} style={{ gap: 8 }}>
-            <Label style={{ marginTop: 6 }}>{CATEGORY_LABEL[cat]}</Label>
-            {EXERCISES.filter((e) => e.category === cat).map((e) => {
-              const on = has(e.id);
-              return (
-                <Pressable key={e.id} onPress={() => toggleExercise(e.id)}>
-                  <Panel
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: 12,
-                      borderColor: on ? c.accent : c.edge,
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: c.text, fontSize: 14, fontWeight: '700' }}>{e.name}</Text>
-                      <Text style={{ color: c.muted, fontFamily: mono, fontSize: 10, marginTop: 3 }} numberOfLines={1}>
-                        {e.muscles.slice(0, 3).join(', ')}
-                      </Text>
-                    </View>
-                    <Ionicons name={on ? 'checkmark-circle' : 'add-circle-outline'} size={24} color={on ? c.accent : c.muted} />
-                  </Panel>
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
+        <Label style={{ marginTop: 6 }}>Add exercises</Label>
+        <ExerciseFinder
+          mode="pick"
+          selected={items.map((i) => i.exerciseId)}
+          onOpen={toggleExercise}
+          onEditGear={() => nav.go({ name: 'equipment' })}
+        />
       </ScrollView>
 
       <View
@@ -178,7 +165,11 @@ export default function BuilderScreen({ nav }: { nav: Nav }) {
           borderTopColor: c.edge,
         }}
       >
-        <Button title={`Save protocol (${items.length} exercises)`} icon="save" onPress={save} />
+        <Button
+          title={`${editing ? 'Save changes' : 'Save workout'} (${items.length} exercises)`}
+          icon="save"
+          onPress={save}
+        />
       </View>
     </View>
   );

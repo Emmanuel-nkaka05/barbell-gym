@@ -1,62 +1,68 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { fonts, radius, useColors } from '../theme';
-import { Header, Label, Panel } from '../components/Panel';
+import { Header } from '../components/Panel';
 import BodyGuide from '../components/BodyGuide';
+import ExerciseFinder from '../components/ExerciseFinder';
 import HelpModal from '../components/HelpModal';
-import { CATEGORY_LABEL, Category, EXERCISES, FOCUS } from '../data/exercises';
+import type { Nav } from '../nav';
 
-const CATEGORIES: Category[] = ['big4', 'upper', 'lower'];
+type Tab = 'exercises' | 'body';
 
-export default function DiscoverScreen() {
+export default function DiscoverScreen({ nav }: { nav: Nav }) {
   const c = useColors();
+  const [tab, setTab] = useState<Tab>('exercises');
   const [help, setHelp] = useState<string | null>(null);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
       <Header title="Discover" />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130, gap: 18 }}>
-        <BodyGuide onOpenExercise={setHelp} />
 
-        <View style={{ gap: 10 }}>
-          <Text style={{ color: c.text, fontSize: 22, fontFamily: fonts.display, textTransform: 'uppercase' }}>
-            Exercise library
-          </Text>
-          {CATEGORIES.map((cat) => (
-            <View key={cat} style={{ gap: 8 }}>
-              <Label style={{ marginTop: 4 }}>{CATEGORY_LABEL[cat]}</Label>
-              {EXERCISES.filter((e) => e.category === cat).map((e) => (
-                <Pressable key={e.id} onPress={() => setHelp(e.id)}>
-                  <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }}>
-                    <View
-                      style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: radius.small,
-                        backgroundColor: c.panelRaised,
-                        borderWidth: 1,
-                        borderColor: c.edge,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Ionicons name="barbell" size={22} color={c.accent} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: c.accent, fontFamily: fonts.bodySemi, fontSize: 10 }}>
-                        Best for {FOCUS[e.id]}
-                      </Text>
-                      <Text style={{ color: c.text, fontSize: 15, fontFamily: fonts.display, marginTop: 2 }}>{e.name}</Text>
-                    </View>
-                    <Ionicons name="play-circle" size={26} color={c.accent} />
-                  </Panel>
-                </Pressable>
-              ))}
-            </View>
-          ))}
-        </View>
+      <View
+        style={{
+          flexDirection: 'row',
+          marginHorizontal: 18,
+          marginBottom: 12,
+          backgroundColor: c.panel,
+          borderRadius: radius.pill,
+          borderWidth: 1,
+          borderColor: c.edge,
+          padding: 4,
+        }}
+      >
+        {([
+          { key: 'exercises', label: 'Exercises' },
+          { key: 'body', label: 'Body guide' },
+        ] as { key: Tab; label: string }[]).map((t) => (
+          <Pressable
+            key={t.key}
+            onPress={() => setTab(t.key)}
+            style={{
+              flex: 1,
+              paddingVertical: 10,
+              alignItems: 'center',
+              borderRadius: radius.pill,
+              backgroundColor: tab === t.key ? c.accent : 'transparent',
+            }}
+          >
+            <Text style={{ color: tab === t.key ? c.onAccent : c.muted, fontFamily: fonts.bodySemi, fontSize: 13 }}>
+              {t.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 130 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {tab === 'exercises' ? (
+          <ExerciseFinder mode="browse" onOpen={setHelp} onEditGear={() => nav.go({ name: 'equipment' })} />
+        ) : (
+          <BodyGuide onOpenExercise={setHelp} />
+        )}
       </ScrollView>
+
       <HelpModal exerciseId={help} onClose={() => setHelp(null)} />
     </View>
   );

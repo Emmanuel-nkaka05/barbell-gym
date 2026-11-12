@@ -12,6 +12,7 @@ export type Program = {
   level: string;
   exercises: ProgramExercise[];
   custom?: boolean;
+  main?: boolean; // false for the extra no-gear protocols, so they are not part of the normal rotation
 };
 
 export const BUILTIN_PROGRAMS: Program[] = [
@@ -60,6 +61,34 @@ export const BUILTIN_PROGRAMS: Program[] = [
       { exerciseId: 'rdl', sets: 4, reps: '8-10' },
       { exerciseId: 'lunge', sets: 3, reps: '10', note: '10 steps per leg.' },
       { exerciseId: 'hip-thrust', sets: 3, reps: '10-12' },
+    ],
+  },
+  {
+    id: 'bw-full',
+    name: 'Bodyweight Full Body',
+    tag: 'No equipment needed',
+    level: 'Beginner',
+    main: false,
+    exercises: [
+      { exerciseId: 'pushup', sets: 3, reps: '12' },
+      { exerciseId: 'inverted-row', sets: 3, reps: '10', note: 'Use a heavy, sturdy table.' },
+      { exerciseId: 'air-squat', sets: 3, reps: '15' },
+      { exerciseId: 'single-leg-bridge', sets: 3, reps: '12', note: '12 per leg.' },
+      { exerciseId: 'hollow-hold', sets: 3, reps: '20', note: 'Hold for about 20 seconds each set.' },
+    ],
+  },
+  {
+    id: 'db-home',
+    name: 'Dumbbell Home Workout',
+    tag: 'Dumbbells only',
+    level: 'Beginner',
+    main: false,
+    exercises: [
+      { exerciseId: 'goblet-squat', sets: 3, reps: '10' },
+      { exerciseId: 'db-shoulder-press', sets: 3, reps: '10' },
+      { exerciseId: 'db-rdl', sets: 3, reps: '10' },
+      { exerciseId: 'hammer-curl', sets: 3, reps: '12' },
+      { exerciseId: 'lateral-raise', sets: 3, reps: '12' },
     ],
   },
 ];

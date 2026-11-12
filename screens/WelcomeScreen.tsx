@@ -17,9 +17,8 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg, paddingHorizontal: 18, paddingTop: top, paddingBottom: 24 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Label>System 4.0 active</Label>
-        <Label style={{ color: c.muted }}>Gotham Athletics</Label>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Label>Cortex Systems Technologies</Label>
       </View>
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -32,7 +31,7 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <Text style={{ flex: 1, color: c.muted, fontSize: 13, lineHeight: 19 }}>
-            Barbell protocols built around your goals, strength and pace. Log every set and watch the numbers climb.
+            Barbell workouts built around your goals, strength and pace. Log every set and watch the numbers climb.
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {CHIPS.map((icon) => (
@@ -70,7 +69,7 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
         })}
       >
         <Text style={{ color: c.accent, fontFamily: fonts.display, fontSize: 16, letterSpacing: 1.5 }}>
-          START PROTOCOL
+          START WORKOUT
         </Text>
       </Pressable>
     </View>

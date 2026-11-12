@@ -48,7 +48,7 @@ export default function HistoryScreen() {
         {sessions.length === 0 && (
           <Panel>
             <Text style={{ color: c.muted, fontSize: 14, lineHeight: 21 }}>
-              Nothing logged yet. Start a protocol, check off your sets, and your history and personal bests will
+              Nothing logged yet. Start a workout, check off your sets, and your history and personal bests will
               show up here.
             </Text>
           </Panel>

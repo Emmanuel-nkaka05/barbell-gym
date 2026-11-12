@@ -9,9 +9,11 @@ import ThemeSheet from '../components/ThemeSheet';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { estMinutes, totalSets } from '../data/programs';
+import { quoteOfTheDay } from '../data/quotes';
 import { computeMetrics, fmt, nextProgram, weekDays, weeklyTotals } from '../lib/metrics';
 import { dayKey, streaks, workoutDays } from '../lib/dates';
 import { kgToUnit } from '../lib/units';
+import { programFit } from '../lib/equipment';
 import type { Nav } from '../nav';
 
 const WEEK_GOAL = 4; // workouts per week the missions gauge counts toward
@@ -29,8 +31,9 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
   const m = useMemo(() => computeMetrics(sessions, bodyweight), [sessions, bodyweight]);
   const daily = useMemo(() => weekDays(sessions), [sessions]);
   const weeks = useMemo(() => weeklyTotals(sessions, bodyweight, 8), [sessions, bodyweight]);
-  const next = nextProgram(programs, sessions);
+  const next = nextProgram(programs, sessions, (p) => programFit(p, profile.equipment));
   const topEx = m.top ? EXERCISE_MAP[m.top.exerciseId] : null;
+  const quote = quoteOfTheDay(); // a new one every day
 
   const pills = useMemo(() => {
     const now = new Date();
@@ -151,9 +154,15 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
           </View>
         </View>
 
-        {/* protocol of the day */}
+        {/* quote of the day, right under the Volume row */}
+        <Panel style={[s.card, { gap: 6, borderLeftWidth: 3, borderLeftColor: c.accent }]}>
+          <Label>Quote of the day</Label>
+          <Text style={{ color: c.text, fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>{quote}</Text>
+        </Panel>
+
+        {/* workout of the day */}
         <View style={s.sectionRow}>
-          <Text style={s.section}>Protocol of the day</Text>
+          <Text style={s.section}>Workout of the day</Text>
           <Pressable onPress={() => nav.tab({ name: 'workouts' })}>
             <Label>View all</Label>
           </Pressable>

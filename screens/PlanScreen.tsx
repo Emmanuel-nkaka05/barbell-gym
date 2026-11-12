@@ -12,8 +12,8 @@ const GOAL_LEVELS: LevelKey[] = ['intermediate', 'advanced', 'elite'];
 
 export default function PlanScreen({ nav }: { nav: Nav }) {
   const c = useColors();
-  const { profile, updateProfile, unit } = useStore();
-  const plan = useMemo(() => buildPlan(profile), [profile]);
+  const { profile, updateProfile, unit, sessions } = useStore();
+  const plan = useMemo(() => buildPlan(profile, sessions), [profile, sessions]);
 
   const [inputs, setInputs] = useState<Record<string, string>>(() => {
     const o: Record<string, string> = {};
@@ -136,6 +136,12 @@ export default function PlanScreen({ nav }: { nav: Nav }) {
                 }}
               />
             </View>
+
+            {l.logged ? (
+              <Text style={{ color: c.muted, fontFamily: mono, fontSize: 10 }}>
+                Logged best (est.): {fmtWeight(l.logged, unit)} {unit}. The plan uses whichever is higher.
+              </Text>
+            ) : null}
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <View>

@@ -6,13 +6,14 @@ export type Route =
   | { name: 'profile' }
   | { name: 'detail'; programId: string }
   | { name: 'session'; programId: string }
-  | { name: 'builder' }
+  | { name: 'builder'; programId?: string } // programId set means edit that custom workout
   | { name: 'account'; setup?: boolean }
   | { name: 'plan' }
   | { name: 'auth' }
   | { name: 'leaderboard' }
   | { name: 'admin' }
   | { name: 'discover' }
+  | { name: 'equipment'; setup?: boolean }
   | { name: 'calendar'; date?: string };
 
 export type Nav = {

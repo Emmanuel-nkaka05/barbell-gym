@@ -29,7 +29,7 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
 
   if (!demo) return null;
 
-  const at = (k: Exclude<keyof Pose, 'knee2' | 'ankle2' | 'toe2'>) => mix(demo.a[k], demo.b[k], p);
+  const at = (k: Exclude<keyof Pose, 'knee2' | 'ankle2' | 'toe2' | 'bar'>) => mix(demo.a[k], demo.b[k], p);
   const at2 = (k: 'knee2' | 'ankle2' | 'toe2'): Pt | null => {
     const a = demo.a[k];
     const b = demo.b[k];
@@ -43,7 +43,7 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
   const toe = at('toe');
   const elbow = at('elbow');
   const wrist = at('wrist');
-  const bar = at('bar');
+  const bar = demo.a.bar && demo.b.bar ? mix(demo.a.bar, demo.b.bar, p) : null;
   const knee2 = at2('knee2');
   const ankle2 = at2('ankle2');
   const toe2 = at2('toe2');
@@ -90,6 +90,21 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
           </>
         )}
 
+        {/* chairs, tables and door frames */}
+        {demo.blocks?.map((b, i) => (
+          <Rect
+            key={i}
+            x={b[0]}
+            y={b[1]}
+            width={b[2]}
+            height={b[3]}
+            rx={3}
+            fill={c.panel}
+            stroke={c.edge}
+            strokeWidth={1.5}
+          />
+        ))}
+
         {/* second leg (lunges), drawn behind */}
         {knee2 && ankle2 && toe2 && (
           <>
@@ -111,9 +126,13 @@ export default function ExerciseDemo({ exerciseId, height = 230 }: { exerciseId:
         {limb(shoulder, elbow, 6)}
         {limb(elbow, wrist, 5)}
 
-        {/* barbell plate (side view) */}
-        <Circle cx={bar[0]} cy={bar[1]} r={14} fill="none" stroke={c.accent} strokeWidth={5} />
-        <Circle cx={bar[0]} cy={bar[1]} r={3} fill={c.accent} />
+        {/* barbell plate (side view), only for exercises that use a bar */}
+        {bar && (
+          <>
+            <Circle cx={bar[0]} cy={bar[1]} r={14} fill="none" stroke={c.accent} strokeWidth={5} />
+            <Circle cx={bar[0]} cy={bar[1]} r={3} fill={c.accent} />
+          </>
+        )}
       </Svg>
 
       <View style={{ paddingHorizontal: 14, paddingBottom: 12, gap: 4 }}>

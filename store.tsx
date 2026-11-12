@@ -24,6 +24,7 @@ export type Profile = {
   unit: Unit;
   heightCm: number | null;
   bodyweightKg: number;
+  equipment: string[] | null; // gear the user owns; null means not set yet, so everything is shown
   maxes: Record<string, number>; // current 1RM per lift, kg
   goalLevel: LevelKey;
 };
@@ -48,6 +49,7 @@ type Store = Persisted & {
   addSession: (s: Session) => void;
   deleteSession: (id: string) => void;
   addProgram: (p: Program) => void;
+  updateProgram: (id: string, patch: Partial<Program>) => void; // edits a custom workout
   deleteProgram: (id: string) => void;
   toggleCheckin: (dayKey: string) => void;
   resetAll: () => void;
@@ -64,12 +66,13 @@ const DEFAULT_PROFILE: Profile = {
   unit: 'kg',
   heightCm: null,
   bodyweightKg: 80,
+  equipment: null,
   maxes: {},
   goalLevel: 'advanced',
 };
 
 const DEFAULTS: Persisted = {
-  accent: 'gold',
+  accent: 'bordo',
   sessions: [],
   customPrograms: [],
   profile: DEFAULT_PROFILE,
@@ -135,6 +138,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addSession: (s) => setData((d) => ({ ...d, sessions: [s, ...d.sessions] })),
       deleteSession: (id) => setData((d) => ({ ...d, sessions: d.sessions.filter((s) => s.id !== id) })),
       addProgram: (p) => setData((d) => ({ ...d, customPrograms: [...d.customPrograms, p] })),
+      updateProgram: (id, patch) =>
+        setData((d) => ({
+          ...d,
+          customPrograms: d.customPrograms.map((p) => (p.id === id ? { ...p, ...patch, id: p.id } : p)),
+        })),
       deleteProgram: (id) =>
         setData((d) => ({ ...d, customPrograms: d.customPrograms.filter((p) => p.id !== id) })),
       toggleCheckin: (key) =>
@@ -142,7 +150,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...d,
           checkins: d.checkins.includes(key) ? d.checkins.filter((k) => k !== key) : [...d.checkins, key],
         })),
-      // Clears logged sessions, check-ins and custom protocols; keeps theme and your profile
+      // Clears logged sessions, check-ins and custom workouts; keeps theme and your profile
       resetAll: () => setData((d) => ({ ...DEFAULTS, accent: d.accent, profile: d.profile })),
     }),
     [data, loaded, photo]
