@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { AppState, BackHandler, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SpaceGrotesk_500Medium } from '@expo-google-fonts/space-grotesk/500Medium';
@@ -30,6 +30,7 @@ import CalendarScreen from './screens/CalendarScreen';
 import DiscoverScreen from './screens/DiscoverScreen';
 import EquipmentScreen from './screens/EquipmentScreen';
 import { CloudProvider } from './lib/CloudContext';
+import { cancelQuoteNotifications, syncQuoteNotifications } from './lib/reminders';
 
 export default function App() {
   return (
@@ -42,7 +43,21 @@ export default function App() {
 }
 
 function Root() {
-  const { loaded, accent } = useStore();
+  const { loaded, accent, quoteNotif } = useStore();
+
+  // keep the next two weeks of daily quote notifications scheduled
+  useEffect(() => {
+    if (!loaded) return;
+    const sync = () => {
+      if (quoteNotif.enabled) syncQuoteNotifications(quoteNotif.hour, quoteNotif.minute).catch(() => {});
+      else cancelQuoteNotifications().catch(() => {});
+    };
+    sync();
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') sync();
+    });
+    return () => sub.remove();
+  }, [loaded, quoteNotif.enabled, quoteNotif.hour, quoteNotif.minute]);
   const colors = useMemo(() => makeColors(accent), [accent]);
   const [fontsLoaded, fontError] = useFonts({
     SpaceGrotesk_500Medium,
@@ -68,10 +83,9 @@ function Root() {
 const TAB_ROUTES: Route['name'][] = ['home', 'discover', 'workouts', 'history', 'leaderboard', 'profile'];
 
 function Navigator() {
-  const { sessions, profile } = useStore();
-  const [stack, setStack] = useState<Route[]>([
-    { name: sessions.length > 0 && profile.name.trim() ? 'home' : 'welcome' },
-  ]);
+  const { profile } = useStore();
+  // the welcome screen opens every time the app starts fresh
+  const [stack, setStack] = useState<Route[]>([{ name: 'welcome' }]);
   const guard = useRef<(() => boolean) | null>(null);
 
   const nav = useMemo<Nav>(

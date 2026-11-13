@@ -291,10 +291,10 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
       <View style={s.bottom}>
         {restEnd !== null && (
           <View style={s.rest}>
-            <Ionicons name="timer-outline" size={20} color={c.accent} />
-            <Text style={{ color: c.text, fontFamily: mono, fontSize: 18, fontWeight: '800', flex: 1 }}>
-              Rest {clock(remaining)}
-            </Text>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Label style={{ color: c.muted }}>Rest</Label>
+              <DigitalTimer seconds={remaining} size="small" style={{ alignSelf: 'flex-start' }} />
+            </View>
             <Pressable onPress={() => setRestEnd((r) => (r ? r + 30000 : r))} style={s.restBtn}>
               <Text style={{ color: c.accent, fontWeight: '700' }}>+30s</Text>
             </Pressable>

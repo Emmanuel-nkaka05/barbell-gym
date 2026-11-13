@@ -5,6 +5,7 @@ import { AccentKey, THEMES, fonts, mono, radius, useColors } from '../theme';
 import { Button, Header, Label, Panel } from '../components/Panel';
 import { useStore } from '../store';
 import { Avatar } from '../components/Avatar';
+import QuoteNotificationCard from '../components/QuoteNotificationCard';
 import { useCloud } from '../lib/CloudContext';
 import { authPersists } from '../lib/firebase';
 import { fmtWeight } from '../lib/units';
@@ -73,6 +74,8 @@ export default function ProfileScreen({ nav }: { nav: Nav }) {
             <Button title="Sign in or create account" icon="log-in" onPress={() => nav.go({ name: 'auth' })} />
           ) : null}
         </Panel>
+
+        <QuoteNotificationCard />
 
         <Label style={{ marginTop: 6 }}>Theme</Label>
         <Panel style={{ gap: 8 }}>

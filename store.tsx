@@ -16,6 +16,18 @@ export type Session = {
   exercises: ExerciseLog[];
 };
 
+export type QuoteNotif = { enabled: boolean; hour: number; minute: number };
+
+export type Reminder = {
+  id: string;
+  programId: string;
+  programName: string; // saved so the reminder still reads right if the workout is renamed
+  hour: number; // 0-23
+  minute: number;
+  days: number[]; // 1 = Sunday ... 7 = Saturday
+  notifIds: string[]; // scheduled notification ids, used to cancel it
+};
+
 export type Profile = {
   name: string;
   personalId: string; // assigned by the server when you create an account, never typed in by the user
@@ -35,6 +47,8 @@ type Persisted = {
   customPrograms: Program[];
   profile: Profile;
   checkins: string[]; // days marked as workout days by hand, as YYYY-MM-DD
+  reminders: Reminder[];
+  quoteNotif: QuoteNotif;
 };
 
 type Store = Persisted & {
@@ -52,6 +66,9 @@ type Store = Persisted & {
   updateProgram: (id: string, patch: Partial<Program>) => void; // edits a custom workout
   deleteProgram: (id: string) => void;
   toggleCheckin: (dayKey: string) => void;
+  addReminder: (r: Reminder) => void;
+  removeReminder: (id: string) => void;
+  setQuoteNotif: (patch: Partial<QuoteNotif>) => void;
   resetAll: () => void;
 };
 
@@ -77,6 +94,8 @@ const DEFAULTS: Persisted = {
   customPrograms: [],
   profile: DEFAULT_PROFILE,
   checkins: [],
+  reminders: [],
+  quoteNotif: { enabled: true, hour: 8, minute: 0 },
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -100,6 +119,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ...parsed,
               profile,
               checkins: Array.isArray(parsed.checkins) ? parsed.checkins : [],
+              reminders: Array.isArray(parsed.reminders) ? parsed.reminders : [],
+              quoteNotif: { ...DEFAULTS.quoteNotif, ...(parsed.quoteNotif ?? {}) },
             };
           } catch {}
         }
@@ -150,8 +171,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ...d,
           checkins: d.checkins.includes(key) ? d.checkins.filter((k) => k !== key) : [...d.checkins, key],
         })),
-      // Clears logged sessions, check-ins and custom workouts; keeps theme and your profile
-      resetAll: () => setData((d) => ({ ...DEFAULTS, accent: d.accent, profile: d.profile })),
+      addReminder: (r) => setData((d) => ({ ...d, reminders: [...d.reminders, r] })),
+      removeReminder: (id) => setData((d) => ({ ...d, reminders: d.reminders.filter((r) => r.id !== id) })),
+      setQuoteNotif: (patch) => setData((d) => ({ ...d, quoteNotif: { ...d.quoteNotif, ...patch } })),
+      // Clears logged sessions, check-ins and custom workouts; keeps theme, profile and reminders
+      resetAll: () =>
+        setData((d) => ({
+          ...DEFAULTS,
+          accent: d.accent,
+          profile: d.profile,
+          reminders: d.reminders,
+          quoteNotif: d.quoteNotif,
+        })),
     }),
     [data, loaded, photo]
   );

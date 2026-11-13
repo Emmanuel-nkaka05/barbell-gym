@@ -5,6 +5,8 @@ import { fonts, mono, radius, useColors } from '../theme';
 import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
 import BodyFigure from '../components/BodyFigure';
 import HelpModal from '../components/HelpModal';
+import ReminderSheet from '../components/ReminderSheet';
+import { cancelReminder } from '../lib/reminders';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { gearText, resolveExercise } from '../lib/equipment';
@@ -14,9 +16,11 @@ import type { Nav } from '../nav';
 
 export default function DetailScreen({ nav, programId }: { nav: Nav; programId: string }) {
   const c = useColors();
-  const { programs, deleteProgram, profile } = useStore();
+  const { programs, deleteProgram, profile, reminders, removeReminder } = useStore();
   const program = programs.find((p) => p.id === programId);
   const [help, setHelp] = useState<string | null>(null);
+  const [remind, setRemind] = useState(false);
+  const reminderCount = reminders.filter((r) => r.programId === programId).length;
 
   useEffect(() => {
     if (!program) nav.back();
@@ -36,6 +40,13 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
         text: 'Delete',
         style: 'destructive',
         onPress: () => {
+          // switch off this workout's reminders so they do not keep firing
+          reminders
+            .filter((r) => r.programId === program.id)
+            .forEach((r) => {
+              cancelReminder(r.notifIds);
+              removeReminder(r.id);
+            });
           deleteProgram(program.id);
           nav.back();
         },
@@ -171,10 +182,30 @@ export default function DetailScreen({ nav, programId }: { nav: Nav; programId: 
           borderTopColor: c.edge,
         }}
       >
-        <Button title="Start workout" icon="play" onPress={() => nav.go({ name: 'session', programId: program.id })} />
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Button
+            title={reminderCount ? `Reminders (${reminderCount})` : 'Remind me'}
+            icon="alarm"
+            variant="ghost"
+            onPress={() => setRemind(true)}
+            style={{ flex: 1, paddingHorizontal: 10 }}
+          />
+          <Button
+            title="Start workout"
+            icon="play"
+            onPress={() => nav.go({ name: 'session', programId: program.id })}
+            style={{ flex: 1.2, paddingHorizontal: 10 }}
+          />
+        </View>
       </View>
 
       <HelpModal exerciseId={help} onClose={() => setHelp(null)} />
+      <ReminderSheet
+        visible={remind}
+        onClose={() => setRemind(false)}
+        programId={program.id}
+        programName={program.name}
+      />
     </View>
   );
 }

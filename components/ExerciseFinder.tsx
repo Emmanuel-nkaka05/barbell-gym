@@ -23,14 +23,14 @@ export default function ExerciseFinder({ mode, onOpen, selected = [], onEditGear
 
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState<MuscleGroup | 'all'>('all');
-  const [gear, setGear] = useState<Gear>(owned ? 'mine' : 'all');
+  const [gear, setGear] = useState<Gear>(owned && owned.length ? 'mine' : owned ? 'none' : 'all');
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return EXERCISES.filter((e) => {
       if (group !== 'all' && e.group !== group) return false;
       if (gear === 'none' && e.equipment.length > 0) return false;
-      if (gear === 'mine' && !canDo(e, owned)) return false;
+      if (gear === 'mine' && (e.equipment.length === 0 || !canDo(e, owned))) return false;
       if (!q) return true;
       return (
         e.name.toLowerCase().includes(q) ||
@@ -58,7 +58,7 @@ export default function ExerciseFinder({ mode, onOpen, selected = [], onEditGear
   );
 
   const gearOptions: { key: Gear; label: string }[] = [
-    ...(owned ? [{ key: 'mine' as Gear, label: 'My gear' }] : []),
+    ...(owned && owned.length ? [{ key: 'mine' as Gear, label: 'My gear' }] : []),
     { key: 'none', label: 'No equipment' },
     { key: 'all', label: 'All' },
   ];
@@ -160,7 +160,9 @@ export default function ExerciseFinder({ mode, onOpen, selected = [], onEditGear
 
       {list.length === 0 && (
         <Text style={{ color: c.muted, fontSize: 14, lineHeight: 21 }}>
-          Nothing matches. Try another muscle group, clear the search, or switch the gear filter to All.
+          {gear === 'mine'
+            ? 'No exercises match the gear you picked. Tap Edit gear to add more, or switch to No equipment.'
+            : 'Nothing matches. Try another muscle group, clear the search, or switch the gear filter to All.'}
         </Text>
       )}
 

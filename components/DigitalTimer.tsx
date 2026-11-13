@@ -1,17 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, StyleProp, View, ViewStyle } from 'react-native';
 import { fonts, useColors } from '../theme';
 
-const TILE_W = 38;
-const TILE_H = 54;
+const SIZES = {
+  large: { w: 38, h: 54, font: 38, colon: 36, gap: 6 },
+  small: { w: 26, h: 38, font: 26, colon: 24, gap: 4 },
+};
+type Size = keyof typeof SIZES;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** One digit tile. When the digit changes, the old one slides up and out and the new one slides in from below. */
-function Digit({ ch }: { ch: string }) {
+/**
+ * One digit tile. The digit is always drawn as plain text, so it can never go missing.
+ * When it changes, the old digit slides up and out while the new one slides in from below.
+ */
+function Digit({ ch, size }: { ch: string; size: Size }) {
   const c = useColors();
+  const d = SIZES[size];
   const [cur, setCur] = useState(ch);
-  const [prev, setPrev] = useState(ch);
+  const [prev, setPrev] = useState<string | null>(null);
   const anim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -21,23 +28,32 @@ function Digit({ ch }: { ch: string }) {
     anim.setValue(0);
     Animated.timing(anim, {
       toValue: 1,
-      duration: 280,
+      duration: 260,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (finished) setPrev(null);
+    });
   }, [ch]);
 
   const text = {
+    width: '100%' as const,
+    textAlign: 'center' as const,
+    textAlignVertical: 'center' as const,
+    includeFontPadding: false,
     color: c.accent,
     fontFamily: fonts.dots,
-    fontSize: 40,
-  } as const;
+    fontSize: d.font,
+    lineHeight: d.h,
+  };
+
+  const moving = prev !== null;
 
   return (
     <View
       style={{
-        width: TILE_W,
-        height: TILE_H,
+        width: d.w,
+        height: d.h,
         borderRadius: 10,
         backgroundColor: c.panelRaised,
         borderWidth: 1,
@@ -45,46 +61,54 @@ function Digit({ ch }: { ch: string }) {
         overflow: 'hidden',
       }}
     >
-      <Animated.View
+      {moving && (
+        <Animated.Text
+          style={[
+            text,
+            {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+              transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -d.h] }) }],
+            },
+          ]}
+        >
+          {prev}
+        </Animated.Text>
+      )}
+      <Animated.Text
         style={[
-          styles.fill,
+          text,
           {
-            opacity: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -TILE_H] }) }],
+            opacity: moving ? anim : 1,
+            transform: [{ translateY: moving ? anim.interpolate({ inputRange: [0, 1], outputRange: [d.h, 0] }) : 0 }],
           },
         ]}
       >
-        <Animated.Text style={text}>{prev}</Animated.Text>
-      </Animated.View>
-      <Animated.View
-        style={[
-          styles.fill,
-          {
-            opacity: anim,
-            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [TILE_H, 0] }) }],
-          },
-        ]}
-      >
-        <Animated.Text style={text}>{cur}</Animated.Text>
-      </Animated.View>
+        {cur}
+      </Animated.Text>
     </View>
   );
 }
 
 /** A digital clock with sliding digits and a blinking colon. Shows M:SS and adds hours after the first hour. */
-export default function DigitalTimer({ seconds }: { seconds: number }) {
+export default function DigitalTimer({
+  seconds,
+  size = 'large',
+  style,
+}: {
+  seconds: number;
+  size?: Size;
+  style?: StyleProp<ViewStyle>;
+}) {
   const c = useColors();
-  const blink = useRef(new Animated.Value(1)).current;
+  const d = SIZES[size];
+  const [colonOn, setColonOn] = useState(true);
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blink, { toValue: 0.2, duration: 500, useNativeDriver: true }),
-        Animated.timing(blink, { toValue: 1, duration: 500, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
+    const id = setInterval(() => setColonOn((v) => !v), 500);
+    return () => clearInterval(id);
   }, []);
 
   const total = Math.max(0, Math.floor(seconds));
@@ -95,33 +119,21 @@ export default function DigitalTimer({ seconds }: { seconds: number }) {
   const chars = text.split('');
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', alignSelf: 'center', gap: d.gap }, style]}>
       {chars.map((ch, i) => {
         // keys count from the right, so a digit keeps its tile when the clock grows an hour digit
         const key = chars.length - i;
         return ch === ':' ? (
           <Animated.Text
             key={key}
-            style={{ color: c.accent, fontFamily: fonts.dots, fontSize: 36, opacity: blink }}
+            style={{ color: c.accent, fontFamily: fonts.dots, fontSize: d.colon, opacity: colonOn ? 1 : 0.25 }}
           >
             :
           </Animated.Text>
         ) : (
-          <Digit key={key} ch={ch} />
+          <Digit key={key} ch={ch} size={size} />
         );
       })}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fill: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-});
