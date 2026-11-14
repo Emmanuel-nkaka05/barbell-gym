@@ -10,7 +10,7 @@ import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { ColorsContext, makeColors } from './theme';
-import { AppProvider, useStore } from './store';
+import { AppProvider, useLoaded, useNotifs, useProfile, useTheme } from './store';
 import type { Nav, Route } from './nav';
 import TabBar from './components/TabBar';
 import WelcomeScreen from './screens/WelcomeScreen';
@@ -43,7 +43,9 @@ export default function App() {
 }
 
 function Root() {
-  const { loaded, accent, quoteNotif } = useStore();
+  const loaded = useLoaded();
+  const { accent } = useTheme();
+  const { quoteNotif } = useNotifs();
 
   // keep the next two weeks of daily quote notifications scheduled
   useEffect(() => {
@@ -83,7 +85,7 @@ function Root() {
 const TAB_ROUTES: Route['name'][] = ['home', 'discover', 'workouts', 'history', 'leaderboard', 'profile'];
 
 function Navigator() {
-  const { profile } = useStore();
+  const { profile } = useProfile();
   // the welcome screen opens every time the app starts fresh
   const [stack, setStack] = useState<Route[]>([{ name: 'welcome' }]);
   const guard = useRef<(() => boolean) | null>(null);

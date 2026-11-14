@@ -31,7 +31,9 @@
     "plugins": [
       "expo-font",
       "@react-native-google-signin/google-signin",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-audio",
+      "expo-asset"
     ]
   }
 }

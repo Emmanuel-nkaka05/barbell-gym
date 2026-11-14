@@ -5,16 +5,18 @@ import { Colors, fonts, mono, radius, useColors } from '../theme';
 import { Label, Panel, useTopPad } from '../components/Panel';
 import { Avatar } from '../components/Avatar';
 import Gauge from '../components/Gauge';
+import DeloadCard from '../components/DeloadCard';
 import ThemeSheet from '../components/ThemeSheet';
 import { useStore } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { estMinutes, totalSets } from '../data/programs';
 import { quoteOfTheDay } from '../data/quotes';
 import { computeMetrics, fmt, nextProgram, weekDays, weeklyTotals } from '../lib/metrics';
-import { dayKey, streaks, workoutDays } from '../lib/dates';
+import { dayKey, streaks, todayKey, workoutDays } from '../lib/dates';
 import { kgToUnit } from '../lib/units';
 import { programFit } from '../lib/equipment';
 import type { Nav } from '../nav';
+import WeeklyRecap from '../components/WeeklyRecap';
 
 const WEEK_GOAL = 4; // workouts per week the missions gauge counts toward
 const LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -27,7 +29,8 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
   const [themeOpen, setThemeOpen] = useState(false);
 
   const days = useMemo(() => workoutDays(sessions, checkins), [sessions, checkins]);
-  const streak = useMemo(() => streaks(days).current, [days]);
+  const st = useMemo(() => streaks(days, todayKey(), profile.restDays), [days, profile.restDays]);
+  const streak = st.current;
   const m = useMemo(() => computeMetrics(sessions, bodyweight), [sessions, bodyweight]);
   const daily = useMemo(() => weekDays(sessions), [sessions]);
   const weeks = useMemo(() => weeklyTotals(sessions, bodyweight, 8), [sessions, bodyweight]);
@@ -74,7 +77,7 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
 
         {/* title and calendar */}
         <View style={s.titleRow}>
-          <Text style={s.dash}>DASHBOARD</Text>
+          <Text style={s.dash}>TRAINING HUB</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Pressable onPress={() => setThemeOpen(true)} style={s.calBtn} hitSlop={8}>
               <Ionicons name="color-palette" size={20} color={c.accent} />
@@ -97,6 +100,8 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
             </Pressable>
           ))}
         </View>
+
+        <DeloadCard />
 
         {/* stats */}
         <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -157,7 +162,7 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
         {/* quote of the day, right under the Volume row */}
         <Panel style={[s.card, { gap: 6, borderLeftWidth: 3, borderLeftColor: c.accent }]}>
           <Label>Quote of the day</Label>
-          <Text style={{ color: c.text, fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>{quote}</Text>
+          <Text style={{ color: c.text, fontFamily: fonts.display, fontSize: 20, lineHeight: 28 }}>{quote}</Text>
         </Panel>
 
         {/* workout of the day */}
@@ -188,38 +193,30 @@ export default function HomeScreen({ nav }: { nav: Nav }) {
           </Panel>
         </Pressable>
 
-        {/* tactical stats */}
-        <View style={s.sectionRow}>
-          <Text style={s.section}>Tactical stats</Text>
-        </View>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <Panel style={[s.card, { flex: 1 }]}>
-            <View style={s.cardHead}>
-              <Label style={{ color: c.muted }}>Top lift</Label>
-              <Ionicons name="trophy" size={16} color={c.cyan} />
-            </View>
-            <Text style={s.big}>
-              {m.top ? Math.round(kgToUnit(m.top.best.e1rm, unit)) : '--'}
-              <Text style={s.unit}> {unit}</Text>
-            </Text>
-            <Text style={s.unit} numberOfLines={1}>
-              {topEx ? `${topEx.name}, est. 1RM` : 'Log a lift to track'}
-            </Text>
-          </Panel>
-          <Pressable style={{ flex: 1 }} onPress={() => nav.go({ name: 'calendar' })}>
-            <Panel style={[s.card, { flex: 1 }]}>
-              <View style={s.cardHead}>
-                <Label style={{ color: c.muted }}>Streak</Label>
-                <Ionicons name="calendar" size={16} color={c.accent} />
-              </View>
-              <Text style={s.big}>
-                {streak}
-                <Text style={s.unit}> {streak === 1 ? 'day' : 'days'}</Text>
-              </Text>
-              <Text style={s.unit}>tap for calendar</Text>
-            </Panel>
-          </Pressable>
-        </View>
+  {/* tactical stats */}
+<View style={s.sectionRow}>
+  <Text style={s.section}>Tactical stats</Text>
+</View>
+<View style={{ flexDirection: 'row', gap: 12 }}>
+  <Panel style={[s.card, { flex: 1 }]}>
+    <View style={s.cardHead}>
+      <Label style={{ color: c.muted }}>Top lift</Label>
+      <Ionicons name="trophy" size={16} color={c.cyan} />
+    </View>
+    <Text style={s.big}>
+      {m.top ? Math.round(kgToUnit(m.top.best.e1rm, unit)) : '--'}
+      <Text style={s.unit}> {unit}</Text>
+    </Text>
+    <Text style={s.unit} numberOfLines={1}>
+      {topEx ? `${topEx.name}, est. 1RM` : 'Log a lift to track'}
+    </Text>
+  </Panel>
+  <Pressable style={{ flex: 1 }} onPress={() => nav.go({ name: 'calendar' })}>
+    <Panel style={[s.card, { flex: 1 }]}>
+      {/* ... streak code ... */}
+    </Panel>
+  </Pressable>
+</View>
 
         <Pressable onPress={() => nav.go({ name: 'plan' })}>
           <Panel style={s.protocol}>

@@ -4,8 +4,6 @@ import {
   Image,
   ImageSourcePropType,
   Pressable,
-  ScrollView,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -17,7 +15,6 @@ import type { IconName } from '../components/Panel';
 
 type Slide = { image: ImageSourcePropType; title: string };
 
-// Put the six photos in assets/welcome/ as gym-1.jpg ... gym-6.jpg
 const SLIDES: Slide[] = [
   { image: require('../assets/welcome/gym-1.jpg'), title: 'Powerlifting' },
   { image: require('../assets/welcome/gym-2.jpg'), title: 'Hypertrophy' },
@@ -27,88 +24,112 @@ const SLIDES: Slide[] = [
   { image: require('../assets/welcome/gym-6.jpg'), title: 'Bodybuilding' },
 ];
 
+const PADDED_SLIDES = [SLIDES[SLIDES.length - 1], ...SLIDES, SLIDES[0]];
+
 const CHIPS: IconName[] = ['barbell', 'body', 'shield-checkmark'];
 const AUTO_MS = 4500;
+const BG_OPACITY = 0.5;
 
 export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
   const c = useColors();
   const top = useTopPad();
   const { width: W, height: H } = useWindowDimensions();
 
-  // a different photo to start on every time the app opens
-  const start = useRef(Math.floor(Math.random() * SLIDES.length)).current;
-  const [index, setIndex] = useState(start);
-  const indexRef = useRef(start);
+  // Start at index 1 (the real first image) instead of the left clone
+  const start = useRef(1).current;
+  const [index, setIndex] = useState(0);
+  const indexRef = useRef(0);
   indexRef.current = index;
 
   const scrollX = useRef(new Animated.Value(start * W)).current;
-  const scroller = useRef<ScrollView>(null);
+  const scroller = useRef<any>(null);
   const dragging = useRef(false);
   const placed = useRef(false);
   const [pagerH, setPagerH] = useState(0);
 
-  // photos change by themselves, and pause while you are swiping
+  // Auto-play
   useEffect(() => {
     const id = setInterval(() => {
       if (dragging.current) return;
-      const next = (indexRef.current + 1) % SLIDES.length;
+      const currentScroll = indexRef.current + 1;
+      let next = currentScroll + 1;
+      if (next > PADDED_SLIDES.length - 1) next = PADDED_SLIDES.length - 1;
       scroller.current?.scrollTo({ x: next * W, animated: true });
     }, AUTO_MS);
     return () => clearInterval(id);
   }, [W]);
 
-  const goTo = (i: number) => scroller.current?.scrollTo({ x: i * W, animated: true });
+  const goTo = (i: number) => scroller.current?.scrollTo({ x: (i + 1) * W, animated: true });
+
+  const handleScroll = (e: any) => {
+    const x = e.nativeEvent.contentOffset.x;
+    let i = Math.round(x / W);
+
+    const realIndex = (i - 1 + SLIDES.length) % SLIDES.length;
+    if (realIndex !== indexRef.current) {
+      setIndex(realIndex);
+      indexRef.current = realIndex;
+    }
+
+    // Seamless teleport logic
+    if (i === 0) {
+      scroller.current?.scrollTo({ x: SLIDES.length * W, animated: false });
+    } else if (i === PADDED_SLIDES.length - 1) {
+      scroller.current?.scrollTo({ x: 1 * W, animated: false });
+    }
+  };
+
+  const cardH = Math.max(0, pagerH - 12);
+  const cardW = Math.min(W - 56, Math.round(cardH * 0.66));
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg }}>
-      {/* background: the same photos, blurred and tinted, fading along with the swipe */}
-      {SLIDES.map((s, i) => (
+      {/* Backgrounds (also padded for the loop) */}
+      {PADDED_SLIDES.map((s, i) => (
         <Animated.Image
           key={i}
           source={s.image}
-          blurRadius={16}
+          blurRadius={10}
           resizeMode="cover"
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              opacity: scrollX.interpolate({
-                inputRange: [(i - 1) * W, i * W, (i + 1) * W],
-                outputRange: [0, 1, 0],
-                extrapolate: 'clamp',
-              }),
-            },
-          ]}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: W,
+            height: H,
+            opacity: scrollX.interpolate({
+              inputRange: [(i - 1) * W, i * W, (i + 1) * W],
+              outputRange: [0, BG_OPACITY, 0],
+              extrapolate: 'clamp',
+            }),
+          }}
         />
       ))}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: c.bg, opacity: 0.8 }]} />
 
       <View style={{ flex: 1, paddingTop: top, paddingBottom: 24 }}>
-        {/* brand */}
         <View style={{ paddingHorizontal: 18 }}>
           <View
             style={{
               alignSelf: 'flex-start',
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingVertical: 8,
-              paddingHorizontal: 14,
-              borderRadius: radius.pill,
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 16,
               borderWidth: 1,
               borderColor: c.edge,
               backgroundColor: 'rgba(0,0,0,0.25)',
             }}
           >
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.green }} />
-            <Label>Cortex Systems Technologies</Label>
+            <Text style={{ color: c.accent, fontFamily: fonts.display, fontSize: 20, letterSpacing: 4 }}>CORTEX</Text>
+            <Text style={{ color: c.muted, fontFamily: fonts.bodySemi, fontSize: 10, letterSpacing: 3, marginTop: 2 }}>
+              SYSTEMS TECHNOLOGIES
+            </Text>
           </View>
         </View>
 
-        {/* photo cards */}
         <View style={{ flex: 1, marginTop: 14 }} onLayout={(e) => setPagerH(e.nativeEvent.layout.height)}>
           {pagerH > 0 && (
             <Animated.ScrollView
-              ref={scroller as any}
+              ref={scroller}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
@@ -127,68 +148,48 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
               }}
               onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
                 useNativeDriver: true,
-                listener: (e: any) => {
-                  const i = Math.round(e.nativeEvent.contentOffset.x / W);
-                  if (i !== indexRef.current && i >= 0 && i < SLIDES.length) setIndex(i);
-                },
+                listener: handleScroll,
               })}
             >
-              {SLIDES.map((s, i) => (
-                <View key={i} style={{ width: W, height: pagerH, paddingHorizontal: 36, paddingVertical: 6 }}>
+              {PADDED_SLIDES.map((s, i) => (
+                <View key={i} style={{ width: W, height: pagerH, alignItems: 'center', justifyContent: 'center' }}>
                   <View
                     style={{
-                      flex: 1,
-                      borderRadius: 32,
+                      width: cardW,
+                      height: cardH,
+                      borderRadius: 28,
                       overflow: 'hidden',
                       borderWidth: 1,
                       borderColor: c.edge,
                       backgroundColor: c.panel,
                     }}
                   >
-                    <Image source={s.image} resizeMode="cover" style={StyleSheet.absoluteFill} />
+                    <Image source={s.image} resizeMode="cover" style={{ width: cardW, height: cardH }} />
                     <View
                       style={{
                         position: 'absolute',
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        flexDirection: 'row',
-                        alignItems: 'flex-end',
-                        gap: 10,
-                        padding: 18,
-                        paddingTop: 40,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        padding: 14,
+                        paddingTop: 26,
+                        backgroundColor: 'rgba(0,0,0,0.45)',
                       }}
                     >
-                      <View style={{ flex: 1 }}>
-                        <Label>Featured workout</Label>
-                        <Text
-                          style={{
-                            color: c.text,
-                            fontFamily: fonts.display,
-                            fontSize: 26,
-                            textTransform: 'uppercase',
-                            marginTop: 2,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {s.title}
-                        </Text>
-                      </View>
-                      <View
+                      <Label>Featured workout</Label>
+                      <Text
                         style={{
-                          paddingVertical: 6,
-                          paddingHorizontal: 12,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: c.accent,
-                          backgroundColor: c.panel,
+                          color: c.text,
+                          fontFamily: fonts.display,
+                          fontSize: 22,
+                          textTransform: 'uppercase',
+                          marginTop: 2,
                         }}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
                       >
-                        <Text style={{ color: c.accent, fontFamily: fonts.bodySemi, fontSize: 13 }}>
-                          {i + 1}/{SLIDES.length}
-                        </Text>
-                      </View>
+                        {s.title}
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -197,7 +198,6 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
           )}
         </View>
 
-        {/* dots */}
         <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginVertical: 12 }}>
           {SLIDES.map((_, i) => (
             <Pressable key={i} onPress={() => goTo(i)} hitSlop={8}>
@@ -214,12 +214,14 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
           ))}
         </View>
 
-        <View style={{ paddingHorizontal: 18, gap: 14 }}>
-          <Panel style={{ gap: 12 }}>
+        <View style={{ paddingHorizontal: 18, gap: 12 }}>
+          <Panel style={{ gap: 10, padding: 16 }}>
             <Text
-              style={{ color: c.accent, fontFamily: fonts.serif, fontSize: 32, lineHeight: 36, textTransform: 'uppercase' }}
+              style={{ color: c.accent, fontFamily: fonts.serif, fontSize: 24, textTransform: 'uppercase' }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
             >
-              Achieve{'\n'}ultimate power
+              Achieve ultimate power
             </Text>
             <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19 }}>
               Barbell workouts built around your goals, strength and pace. Log every set and watch the numbers climb.
@@ -229,8 +231,8 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
                 <View
                   key={icon}
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 38,
+                    height: 38,
                     borderRadius: 12,
                     borderWidth: 1,
                     borderColor: c.edge,
@@ -239,7 +241,7 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
                     justifyContent: 'center',
                   }}
                 >
-                  <Ionicons name={icon} size={20} color={c.text} />
+                  <Ionicons name={icon} size={19} color={c.text} />
                 </View>
               ))}
             </View>
@@ -256,7 +258,7 @@ export default function WelcomeScreen({ onStart }: { onStart: () => void }) {
               borderWidth: 2,
               borderColor: c.accent,
               backgroundColor: c.panel,
-              paddingVertical: 18,
+              paddingVertical: 17,
               opacity: pressed ? 0.8 : 1,
             })}
           >

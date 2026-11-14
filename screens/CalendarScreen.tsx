@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, mono, useColors } from '../theme';
 import { Button, Header, Label, Panel, RoundButton } from '../components/Panel';
-import { useStore } from '../store';
+import { useProfile, useWorkouts } from '../store';
 import { MONTHS, dayLabel, monthMatrix, parseKey, sessionsOn, streaks, todayKey, workoutDays } from '../lib/dates';
 import { clock, fmt, sessionSetCount, sessionVolume } from '../lib/metrics';
 import { kgToUnit } from '../lib/units';
@@ -13,7 +13,8 @@ const HEADS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export default function CalendarScreen({ nav, date }: { nav: Nav; date?: string }) {
   const c = useColors();
-  const { sessions, checkins = [], toggleCheckin, unit } = useStore();
+  const { sessions, checkins, toggleCheckin } = useWorkouts();
+  const { unit, profile } = useProfile();
 
   const start = date ? parseKey(date) : new Date();
   const [cursor, setCursor] = useState({ y: start.getFullYear(), m: start.getMonth() });
@@ -23,7 +24,7 @@ export default function CalendarScreen({ nav, date }: { nav: Nav; date?: string 
   const days = useMemo(() => workoutDays(sessions, checkins), [sessions, checkins]);
   const loggedDays = useMemo(() => workoutDays(sessions, []), [sessions]);
   const weeks = useMemo(() => monthMatrix(cursor.y, cursor.m), [cursor]);
-  const st = useMemo(() => streaks(days, today), [days, today]);
+  const st = useMemo(() => streaks(days, today, profile.restDays), [days, today]);
   const monthCount = weeks.flat().filter((k) => k && days.has(k)).length;
 
   const daySessions = sessionsOn(sessions, sel);

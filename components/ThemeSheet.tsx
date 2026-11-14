@@ -2,12 +2,12 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AccentKey, THEMES, fonts, radius, useColors } from '../theme';
-import { useStore } from '../store';
+import { useTheme } from '../store';
 import { Label, RoundButton } from './Panel';
 
 export default function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const c = useColors();
-  const { accent, setAccent } = useStore();
+  const { accent, setAccent } = useTheme();
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>

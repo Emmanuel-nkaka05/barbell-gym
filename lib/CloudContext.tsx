@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { useStore } from '../store';
+import { useLoaded, useProfile, useWorkouts } from '../store';
 import type { Profile } from '../store';
 import { PHOTO_LIMIT } from './photo';
 import { auth } from './firebase';
@@ -43,7 +43,9 @@ const saveCache = (u: CloudUser) =>
   AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ ...u, photo: '' })).catch(() => {});
 
 export function CloudProvider({ children }: { children: React.ReactNode }) {
-  const { profile, sessions, updateProfile, photo, setPhoto, loaded } = useStore();
+  const { profile, updateProfile, photo, setPhoto } = useProfile();
+  const { sessions } = useWorkouts();
+  const loaded = useLoaded();
   const [user, setUser] = useState<CloudUser | null>(null);
   const [synced, setSynced] = useState(false); // true once the account was loaded from the server
   const [needsSync, setNeedsSync] = useState(false); // signed in, but the server has not answered yet

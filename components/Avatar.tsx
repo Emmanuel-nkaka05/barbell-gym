@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../theme';
-import { useStore } from '../store';
+import { useProfile } from '../store';
 import type { IconName } from './Panel';
 
 export const AVATARS: IconName[] = [
@@ -20,7 +20,7 @@ export const AVATARS: IconName[] = [
 
 export function Avatar({ size = 46 }: { size?: number }) {
   const c = useColors();
-  const { photo, profile } = useStore();
+  const { photo, profile } = useProfile();
   const icon = (AVATARS as string[]).includes(profile.avatar) ? (profile.avatar as IconName) : 'person';
 
   return (

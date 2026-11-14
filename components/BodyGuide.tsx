@@ -102,7 +102,7 @@ export default function BodyGuide({ onOpenExercise }: { onOpenExercise?: (id: st
             );
           })}
         </View>
-        <BodyFigure view={view} selected={[part.id]} onSelect={choose} width={118} />
+        <BodyFigure view={view} selected={[part.id]} onSelect={choose} width={136} />
       </Panel>
 
       <Panel style={{ gap: 6 }}>

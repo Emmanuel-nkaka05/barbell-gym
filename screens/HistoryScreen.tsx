@@ -88,6 +88,22 @@ export default function HistoryScreen() {
             <Text style={{ color: c.muted, fontFamily: mono, fontSize: 11 }}>
               {fmt(kgToUnit(sessionVolume(s), unit))} {unit}  |  {sessionSetCount(s)} sets  |  {clock(s.durationSec)}
             </Text>
+    {/* SHOW THE NOTES HERE */}
+    {s.exercises.map((ex) => 
+      ex.sets.filter(set => set.note).map((set, i) => (
+        <View key={i} style={{ flexDirection: 'row', marginTop: 4 }}>
+          <Text style={{ color: c.accent, fontSize: 11, fontFamily: mono }}>{EXERCISE_MAP[ex.exerciseId]?.name}: </Text>
+          <Text style={{ color: c.muted, fontSize: 11, fontFamily: mono, flex: 1 }}>{set.note}</Text>
+        </View>
+      ))
+    )}
+
+
+
+
+
+
+
           </Panel>
         ))}
       </ScrollView>

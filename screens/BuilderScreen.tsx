@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, mono, radius, useColors } from '../theme';
@@ -21,27 +21,67 @@ function Stepper({
   max: number;
 }) {
   const c = useColors();
+  const [text, setText] = useState(String(value));
+
+  // Keep the text in sync if the buttons change the value
+  useEffect(() => {
+    setText(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = parseInt(text, 10);
+    if (!isNaN(parsed)) {
+      const clamped = Math.min(max, Math.max(min, parsed));
+      onChange(clamped);
+      setText(String(clamped));
+    } else {
+      setText(String(value)); // revert if they typed letters
+    }
+  };
+
   const btn = (icon: IconName, d: number) => (
     <Pressable
       onPress={() => onChange(Math.min(max, Math.max(min, value + d)))}
       hitSlop={6}
       style={{
-        width: 30,
-        height: 30,
-        borderRadius: 15,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         borderWidth: 1,
         borderColor: c.edge,
+        backgroundColor: c.panelRaised,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Ionicons name={icon} size={16} color={c.accent} />
+      <Ionicons name={icon} size={18} color={c.accent} />
     </Pressable>
   );
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       {btn('remove', -1)}
-      <Text style={{ color: c.text, fontFamily: mono, minWidth: 24, textAlign: 'center' }}>{value}</Text>
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        onEndEditing={commit}
+        onSubmitEditing={commit}
+        keyboardType="number-pad"
+        selectTextOnFocus
+        style={{
+          width: 44,
+          height: 34,
+          borderRadius: radius.small,
+          borderWidth: 1,
+          borderColor: c.edge,
+          backgroundColor: c.panel,
+          color: c.text,
+          textAlign: 'center',
+          fontFamily: mono,
+          fontSize: 15,
+          padding: 0,
+        }}
+      />
       {btn('add', 1)}
     </View>
   );

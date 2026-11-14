@@ -49,8 +49,13 @@ export const sessionsOn = (sessions: Session[], key: string) =>
 
 const dayNum = (k: string) => Math.round(parseKey(k).getTime() / 86400000);
 
-/** Current run of consecutive workout days (today may still be empty) and your best run ever. */
-export function streaks(days: Set<string>, today = todayKey()) {
+/**
+ * Current run of workout days (today may still be empty) and your best run ever.
+ * graceAllowance is how many missed days the CURRENT streak may bridge. A missed day only counts as
+ * "used" when you trained again after it, so nothing is spent on days that are simply still empty.
+ * Nothing is saved: the numbers are worked out fresh from your workout days every time.
+ */
+export function streaks(days: Set<string>, today = todayKey(), graceAllowance = 0) {
   const nums = Array.from(days)
     .map(dayNum)
     .sort((a, b) => a - b);
@@ -65,10 +70,23 @@ export function streaks(days: Set<string>, today = todayKey()) {
   const set = new Set(nums);
   let cursor = dayNum(today);
   if (!set.has(cursor)) cursor -= 1; // today not done yet, so count back from yesterday
+
   let current = 0;
-  while (set.has(cursor)) {
-    current++;
-    cursor -= 1;
+  let used = 0; // gaps that were bridged by a later workout
+  let gap = 0; // gap currently being walked, only counted if a workout follows it
+  while (true) {
+    if (set.has(cursor)) {
+      used += gap;
+      gap = 0;
+      current++;
+      cursor -= 1;
+    } else if (used + gap < graceAllowance) {
+      gap++;
+      cursor -= 1;
+    } else {
+      break;
+    }
   }
-  return { current, best };
+
+  return { current, best: Math.max(best, current), graceUsed: used, graceLeft: Math.max(0, graceAllowance - used) };
 }

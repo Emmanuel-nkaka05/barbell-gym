@@ -5,7 +5,7 @@ import { BUILTIN_PROGRAMS, Program } from './data/programs';
 import type { LevelKey } from './data/standards';
 import type { Unit } from './lib/units';
 
-export type SetLog = { reps: number; weight: number }; // weight is always stored in kg
+export type SetLog = { reps: number; weight: number ;note?: string }; // weight is always stored in kg
 export type ExerciseLog = { exerciseId: string; sets: SetLog[] };
 export type Session = {
   id: string;
@@ -39,6 +39,7 @@ export type Profile = {
   equipment: string[] | null; // gear the user owns; null means not set yet, so everything is shown
   maxes: Record<string, number>; // current 1RM per lift, kg
   goalLevel: LevelKey;
+  restDays: number; // missed days the current streak may bridge
 };
 
 type Persisted = {
@@ -86,6 +87,7 @@ const DEFAULT_PROFILE: Profile = {
   equipment: null,
   maxes: {},
   goalLevel: 'advanced',
+  restDays: 2,
 };
 
 const DEFAULTS: Persisted = {
@@ -98,7 +100,40 @@ const DEFAULTS: Persisted = {
   quoteNotif: { enabled: true, hour: 8, minute: 0 },
 };
 
-const StoreContext = createContext<Store | null>(null);
+type ThemeSlice = { accent: AccentKey; setAccent: (a: AccentKey) => void };
+type ProfileSlice = {
+  profile: Profile;
+  unit: Unit;
+  bodyweight: number;
+  photo: string | null;
+  setPhoto: (uri: string | null) => void;
+  updateProfile: (patch: Partial<Profile>) => void;
+};
+type WorkoutSlice = {
+  sessions: Session[];
+  programs: Program[];
+  checkins: string[];
+  addSession: (s: Session) => void;
+  deleteSession: (id: string) => void;
+  addProgram: (p: Program) => void;
+  updateProgram: (id: string, patch: Partial<Program>) => void;
+  deleteProgram: (id: string) => void;
+  toggleCheckin: (dayKey: string) => void;
+  resetAll: () => void;
+};
+type NotifSlice = {
+  reminders: Reminder[];
+  quoteNotif: QuoteNotif;
+  addReminder: (r: Reminder) => void;
+  removeReminder: (id: string) => void;
+  setQuoteNotif: (patch: Partial<QuoteNotif>) => void;
+};
+
+const ThemeCtx = createContext<ThemeSlice | null>(null);
+const ProfileCtx = createContext<ProfileSlice | null>(null);
+const WorkoutCtx = createContext<WorkoutSlice | null>(null);
+const NotifCtx = createContext<NotifSlice | null>(null);
+const LoadedCtx = createContext(false);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [data, setData] = useState<Persisted>(DEFAULTS);
@@ -144,36 +179,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (photo ? AsyncStorage.setItem(PHOTO_KEY, photo) : AsyncStorage.removeItem(PHOTO_KEY)).catch(() => {});
   }, [photo, loaded]);
 
-  const value = useMemo<Store>(
+  // Every action uses the functional setData form, so this object never changes identity.
+  const actions = useMemo(
     () => ({
-      ...data,
-      checkins: data.checkins ?? [],
-      loaded,
-      programs: [...BUILTIN_PROGRAMS, ...data.customPrograms],
-      bodyweight: data.profile.bodyweightKg,
-      photo,
-      setPhoto,
-      unit: data.profile.unit,
-      setAccent: (accent) => setData((d) => ({ ...d, accent })),
-      updateProfile: (patch) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch } })),
-      addSession: (s) => setData((d) => ({ ...d, sessions: [s, ...d.sessions] })),
-      deleteSession: (id) => setData((d) => ({ ...d, sessions: d.sessions.filter((s) => s.id !== id) })),
-      addProgram: (p) => setData((d) => ({ ...d, customPrograms: [...d.customPrograms, p] })),
-      updateProgram: (id, patch) =>
+      setAccent: (accent: AccentKey) => setData((d) => ({ ...d, accent })),
+      updateProfile: (patch: Partial<Profile>) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch } })),
+      addSession: (s: Session) => setData((d) => ({ ...d, sessions: [s, ...d.sessions] })),
+      deleteSession: (id: string) => setData((d) => ({ ...d, sessions: d.sessions.filter((s) => s.id !== id) })),
+      addProgram: (p: Program) => setData((d) => ({ ...d, customPrograms: [...d.customPrograms, p] })),
+      updateProgram: (id: string, patch: Partial<Program>) =>
         setData((d) => ({
           ...d,
           customPrograms: d.customPrograms.map((p) => (p.id === id ? { ...p, ...patch, id: p.id } : p)),
         })),
-      deleteProgram: (id) =>
+      deleteProgram: (id: string) =>
         setData((d) => ({ ...d, customPrograms: d.customPrograms.filter((p) => p.id !== id) })),
-      toggleCheckin: (key) =>
+      toggleCheckin: (key: string) =>
         setData((d) => ({
           ...d,
           checkins: d.checkins.includes(key) ? d.checkins.filter((k) => k !== key) : [...d.checkins, key],
         })),
-      addReminder: (r) => setData((d) => ({ ...d, reminders: [...d.reminders, r] })),
-      removeReminder: (id) => setData((d) => ({ ...d, reminders: d.reminders.filter((r) => r.id !== id) })),
-      setQuoteNotif: (patch) => setData((d) => ({ ...d, quoteNotif: { ...d.quoteNotif, ...patch } })),
+      addReminder: (r: Reminder) => setData((d) => ({ ...d, reminders: [...d.reminders, r] })),
+      removeReminder: (id: string) => setData((d) => ({ ...d, reminders: d.reminders.filter((r) => r.id !== id) })),
+      setQuoteNotif: (patch: Partial<QuoteNotif>) =>
+        setData((d) => ({ ...d, quoteNotif: { ...d.quoteNotif, ...patch } })),
       // Clears logged sessions, check-ins and custom workouts; keeps theme, profile and reminders
       resetAll: () =>
         setData((d) => ({
@@ -184,14 +213,74 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           quoteNotif: d.quoteNotif,
         })),
     }),
-    [data, loaded, photo]
+    []
   );
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  const theme = useMemo<ThemeSlice>(() => ({ accent: data.accent, setAccent: actions.setAccent }), [data.accent, actions]);
+
+  const profileSlice = useMemo<ProfileSlice>(
+    () => ({
+      profile: data.profile,
+      unit: data.profile.unit,
+      bodyweight: data.profile.bodyweightKg,
+      photo,
+      setPhoto,
+      updateProfile: actions.updateProfile,
+    }),
+    [data.profile, photo, actions]
+  );
+
+  const workouts = useMemo<WorkoutSlice>(
+    () => ({
+      sessions: data.sessions,
+      programs: [...BUILTIN_PROGRAMS, ...data.customPrograms],
+      checkins: data.checkins ?? [],
+      addSession: actions.addSession,
+      deleteSession: actions.deleteSession,
+      addProgram: actions.addProgram,
+      updateProgram: actions.updateProgram,
+      deleteProgram: actions.deleteProgram,
+      toggleCheckin: actions.toggleCheckin,
+      resetAll: actions.resetAll,
+    }),
+    [data.sessions, data.customPrograms, data.checkins, actions]
+  );
+
+  const notifs = useMemo<NotifSlice>(
+    () => ({
+      reminders: data.reminders,
+      quoteNotif: data.quoteNotif,
+      addReminder: actions.addReminder,
+      removeReminder: actions.removeReminder,
+      setQuoteNotif: actions.setQuoteNotif,
+    }),
+    [data.reminders, data.quoteNotif, actions]
+  );
+
+  return (
+    <LoadedCtx.Provider value={loaded}>
+      <ThemeCtx.Provider value={theme}>
+        <ProfileCtx.Provider value={profileSlice}>
+          <WorkoutCtx.Provider value={workouts}>
+            <NotifCtx.Provider value={notifs}>{children}</NotifCtx.Provider>
+          </WorkoutCtx.Provider>
+        </ProfileCtx.Provider>
+      </ThemeCtx.Provider>
+    </LoadedCtx.Provider>
+  );
 }
 
-export function useStore(): Store {
-  const v = useContext(StoreContext);
-  if (!v) throw new Error('useStore must be used inside AppProvider');
+function need<T>(v: T | null, name: string): T {
+  if (!v) throw new Error(`${name} must be used inside AppProvider`);
   return v;
+}
+export const useTheme = () => need(useContext(ThemeCtx), 'useTheme');
+export const useProfile = () => need(useContext(ProfileCtx), 'useProfile');
+export const useWorkouts = () => need(useContext(WorkoutCtx), 'useWorkouts');
+export const useNotifs = () => need(useContext(NotifCtx), 'useNotifs');
+export const useLoaded = () => useContext(LoadedCtx);
+
+/** Old all-in-one hook. Still works, but re-renders on ANY change. Prefer the slice hooks above. */
+export function useStore() {
+  return { ...useTheme(), ...useProfile(), ...useWorkouts(), ...useNotifs(), loaded: useLoaded() };
 }

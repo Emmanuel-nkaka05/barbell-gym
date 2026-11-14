@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
+import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, fonts, mono, radius, useColors } from '../theme';
 import { Button, Header, Label, Panel, RoundButton, useTopPad } from '../components/Panel';
 import DigitalTimer from '../components/DigitalTimer';
-import { ExerciseLog, Session, useStore } from '../store';
+import { ExerciseLog, Session, useProfile, useWorkouts } from '../store';
 import { EXERCISE_MAP } from '../data/exercises';
 import { Program, targetReps } from '../data/programs';
 import { bestLifts, clock, e1rm, fmt, kcalFor, lastWeight, sessionSetCount, sessionVolume } from '../lib/metrics';
@@ -13,9 +13,13 @@ import type { Unit } from '../lib/units';
 import { startWeights } from '../lib/plan';
 import { resolveExercise } from '../lib/equipment';
 import HelpModal from '../components/HelpModal';
+import PlateCalculator from '../components/PlateCalculator';
+import { Confetti, PulseGlow } from '../components/Confetti';
+import { hapticLight, hapticMedium, hapticSuccess } from '../lib/haptics';
+import { loadSounds, playBeep, playTick, unloadSounds } from '../lib/sounds';
 import type { Nav } from '../nav';
 
-type SetRow = { weight: string; reps: string; done: boolean };
+type SetRow = { weight: string; reps: string; done: boolean ;note: string };
 type Row = { exerciseId: string; sets: SetRow[] };
 
 const REST_SECONDS = 90;
@@ -30,13 +34,14 @@ function initRows(
   return program.exercises.map((pe) => {
     // use the no-equipment version when the workout needs gear the user does not have
     const exerciseId = resolveExercise(pe.exerciseId, owned).id;
-    const w = startKg(exerciseId);
+    const w = startKg(exerciseId)|| 10;
     return {
       exerciseId,
       sets: Array.from({ length: pe.sets }, () => ({
         weight: w ? fmtWeight(w, unit) : '',
         reps: String(targetReps(pe.reps)),
         done: false,
+        note: '',
       })),
     };
   });
@@ -46,7 +51,8 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
   const c = useColors();
   const s = useMemo(() => makeStyles(c), [c]);
   const top = useTopPad();
-  const { programs, sessions, bodyweight, addSession, profile, unit } = useStore();
+  const { programs, sessions, addSession } = useWorkouts();
+  const { bodyweight, profile, unit } = useProfile();
   const program = programs.find((p) => p.id === programId);
 
   const [rows, setRows] = useState<Row[]>(() => {
@@ -54,10 +60,16 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
     return initRows(program, unit, (id) => lastWeight(sessions, id) || plan[id] || 0, profile.equipment);
   });
   const [helpId, setHelpId] = useState<string | null>(null);
+  const [calc, setCalc] = useState<{ ei: number; si: number } | null>(null);
   const startedAt = useRef(Date.now());
   const [now, setNow] = useState(Date.now());
   const [restEnd, setRestEnd] = useState<number | null>(null);
   const [summary, setSummary] = useState<{ session: Session; prs: string[] } | null>(null);
+
+  useEffect(() => {
+    loadSounds();
+    return () => unloadSounds();
+  }, []);
 
   useEffect(() => {
     if (!program) nav.back();
@@ -72,6 +84,11 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
     if (restEnd && now >= restEnd) {
       setRestEnd(null);
       Vibration.vibrate(400);
+      hapticMedium();
+      playBeep();
+    } else if (restEnd) {
+      const left = Math.ceil((restEnd - now) / 1000);
+      if (left <= 3 && left > 0) playTick(); // runs once a second, so one tick per second
     }
   }, [now, restEnd]);
 
@@ -89,7 +106,10 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
   const toggle = (ei: number, si: number) => {
     const cur = rows[ei].sets[si];
     patch(ei, si, { done: !cur.done });
-    if (!cur.done) setRestEnd(Date.now() + REST_SECONDS * 1000);
+    if (!cur.done) {
+      setRestEnd(Date.now() + REST_SECONDS * 1000);
+      hapticLight();
+    }
   };
 
   const addSet = (ei: number) =>
@@ -110,6 +130,7 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
           .map((x) => ({
             weight: unitToKg(parseFloat(x.weight.replace(',', '.')) || 0, unit),
             reps: parseInt(x.reps, 10) || 0,
+            note: x.note.trim() || undefined,
           }))
           .filter((x) => x.reps > 0),
       }))
@@ -130,6 +151,8 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
       }
     }
 
+    if (prs.length > 0) hapticSuccess();
+
     const session: Session = {
       id: String(Date.now()),
       programId,
@@ -139,6 +162,7 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
       exercises: logged,
     };
     addSession(session);
+    Vibration.vibrate([0, 800, 200, 800, 200, 800]); 
     setRestEnd(null);
     setSummary({ session, prs });
   };
@@ -152,6 +176,7 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
       { text: 'Keep training', style: 'cancel' },
       { text: 'Abort', style: 'destructive', onPress: nav.back },
     ]);
+    Vibration.vibrate(1000)
     return true;
   };
   const exitRef = useRef(requestExit);
@@ -190,7 +215,8 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
             </View>
           </Panel>
           {prs.length > 0 && (
-            <Panel style={{ gap: 8 }}>
+            <Panel style={{ gap: 8, borderColor: c.accent, borderWidth: 1.5, overflow: 'hidden' }}>
+              <PulseGlow />
               <Label>New personal bests</Label>
               {prs.map((p) => (
                 <Text key={p} style={{ color: c.text, fontSize: 14 }}>
@@ -201,6 +227,7 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
           )}
           <Button title="Back to base" icon="home" onPress={() => nav.tab({ name: 'home' })} />
         </ScrollView>
+        {prs.length > 0 && <Confetti />}
       </View>
     );
   }
@@ -254,12 +281,19 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
                 <View style={s.cCheck} />
               </View>
               {row.sets.map((x, si) => (
+              <View key={si} style={{ marginBottom: 8 }}>
                 <View key={si} style={s.setRow}>
                   <Text style={[s.cSet, s.setNum]}>{si + 1}</Text>
                   <TextInput
                     style={[s.input, x.done && s.inputDone]}
                     value={x.weight}
                     onChangeText={(t) => patch(ei, si, { weight: t })}
+                    onFocus={() => {
+                      if (EXERCISE_MAP[row.exerciseId]?.equipment.includes('barbell')) {
+                        Keyboard.dismiss();
+                        setCalc({ ei, si });
+                      }
+                    }}
                     keyboardType="decimal-pad"
                     placeholder="0"
                     placeholderTextColor={c.muted}
@@ -278,6 +312,22 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
                     <Ionicons name="checkmark" size={20} color={x.done ? c.onAccent : c.muted} />
                   </Pressable>
                 </View>
+                {/* THE NEW NOTE / RPE INPUT */}
+  <TextInput
+    style={{
+      marginLeft: 38, // Aligns with the weight input
+      marginTop: 4,
+      height: 24,
+      fontSize: 12,
+      color: c.muted,
+      fontFamily: mono,
+    }}
+    value={x.note}
+    onChangeText={(t) => patch(ei, si, { note: t })}
+    placeholder="Add RPE or note (e.g. RPE 8, felt heavy)"
+    placeholderTextColor={c.edge}
+  />
+</View>
               ))}
               <Pressable onPress={() => addSet(ei)} style={s.addSet}>
                 <Ionicons name="add" size={16} color={c.accent} />
@@ -298,14 +348,28 @@ export default function SessionScreen({ nav, programId }: { nav: Nav; programId:
             <Pressable onPress={() => setRestEnd((r) => (r ? r + 30000 : r))} style={s.restBtn}>
               <Text style={{ color: c.accent, fontWeight: '700' }}>+30s</Text>
             </Pressable>
-            <Pressable onPress={() => setRestEnd(null)} style={s.restBtn}>
-              <Text style={{ color: c.accent, fontWeight: '700' }}>Skip</Text>
-            </Pressable>
+            <Pressable 
+  onPress={() => {
+    setRestEnd(null);
+    hapticMedium();  // Vibrate
+    playBeep();      // Play sound
+  }} 
+  style={s.restBtn}
+>
+  <Text style={{ color: c.accent, fontWeight: '700' }}>Skip</Text>
+</Pressable>
           </View>
         )}
         <Button title={`Finish workout (${doneCount} sets)`} icon="checkmark-done" onPress={finish} />
       </View>
 
+      <PlateCalculator
+        visible={!!calc}
+        unit={unit}
+        initial={calc ? rows[calc.ei].sets[calc.si].weight : ''}
+        onClose={() => setCalc(null)}
+        onApply={(v) => calc && patch(calc.ei, calc.si, { weight: v })}
+      />
       <HelpModal exerciseId={helpId} onClose={() => setHelpId(null)} />
     </View>
   );
